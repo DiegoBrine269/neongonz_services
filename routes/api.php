@@ -3,10 +3,12 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\CentresController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
+use App\Http\Controllers\Auth\PasswordResetController;
 
 
 Route::get('/user', function (Request $request) {
@@ -27,7 +29,12 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::post('/projects/{id}/remove-vehicle', [ProjectsController::class, 'removeVehicle']);
 
     Route::get('/vehicles-types', [VehiclesController::class, 'types']);
+    Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
+    Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
 });
+
+// Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+// Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::post('/projects/{id}/close', [ProjectsController::class, 'close']);
