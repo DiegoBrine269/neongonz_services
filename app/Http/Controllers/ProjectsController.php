@@ -28,12 +28,7 @@ class ProjectsController extends Controller
         }
         else if ($user->role == 'admin' && $show_closed_param == 0) {
             $query->where('is_open', 1); 
-            dump("El usuario solo quiere ver proyectos abiertos");
-        }
-        else {
-
-            dump("El usuario quiere ver todo");
-
+            // dump("El usuario solo quiere ver proyectos abiertos");
         }
         
         $projects = $query->get();
