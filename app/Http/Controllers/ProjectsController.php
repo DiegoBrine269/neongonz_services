@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectVehicle;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,14 +20,23 @@ class ProjectsController extends Controller
         $user = auth()->user();
 
         // Limitando los proyectos a los que el usuario tiene acceso
-        if ($user->role == 'admin') {
-            $projects = Project::with(['centre', 'service'])->orderBy('id', 'desc')->get();
-        } else {
-            $projects = Project::with(['centre', 'service'])
-                ->where('is_open', 1)
-                ->orderBy('id', 'desc')
-                ->get();
+        $query = Project::with(['centre', 'service'])->orderBy('updated_at', 'desc');
+        $show_closed_param = request()->query('show_closed');
+
+        if($user->role == 'user'){
+            $query->where('is_open', 1); 
         }
+        else if ($user->role == 'admin' && $show_closed_param == 0) {
+            $query->where('is_open', 1); 
+            dump("El usuario solo quiere ver proyectos abiertos");
+        }
+        else {
+
+            dump("El usuario quiere ver todo");
+
+        }
+        
+        $projects = $query->get();
 
         // $projects = Project::with(['centre', 'service'])->orderBy('id', 'desc')->get();
 
@@ -170,6 +180,9 @@ class ProjectsController extends Controller
             'created_at' => now(),
         ]);
 
+        $project->updated_at = now();
+        $project->save();
+
         return response()->json([
             'message' => 'Vehículo añadido correctamente al proyecto',
         ], 201);
@@ -178,7 +191,6 @@ class ProjectsController extends Controller
     public function removeVehicle(Request $request, string $id) {
         $project = Project::find($id);
 
-        dump(   $id);
         
         if (!$project) {
             return response()->json([
@@ -221,7 +233,10 @@ class ProjectsController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $project = Project::find($id);
+        $project->vehicles()->detach();
+
+        $project->delete();
     }
 
     public function close(Request $request, string $id) {
