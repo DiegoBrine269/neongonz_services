@@ -14,4 +14,9 @@ class ProjectVehicle extends Model
         'user_id',
         'commentary',
     ];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
 }

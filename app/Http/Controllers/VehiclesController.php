@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProjectVehicle;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -33,6 +34,8 @@ class VehiclesController extends Controller
         $vehicle = Vehicle::where('eco', $eco)->first();
         return $vehicle;
     }
+
+
 
     public function store(Request $request)
     {

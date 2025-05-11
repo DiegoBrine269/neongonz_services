@@ -178,6 +178,22 @@ class ProjectsController extends Controller
         $project->updated_at = now();
         $project->save();
 
+        // En caso de que hayan proyectos extras
+        if($request->extra_projects && is_array($request->extra_projects)){
+            foreach($request->extra_projects as $id_extra_project){
+                $extra_project = Project::find($id_extra_project); 
+
+                $extra_project->vehicles()->attach($vehicle->id, [
+                    'commentary' => null,
+                    'user_id' => auth()->user()->id,
+                    'created_at' => now(),
+                ]);
+        
+                $extra_project->updated_at = now();
+                $extra_project->save();
+            }
+        }
+
         return response()->json([
             'message' => 'Vehículo añadido correctamente al proyecto',
         ], 201);

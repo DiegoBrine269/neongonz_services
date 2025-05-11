@@ -9,7 +9,7 @@ use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
 use App\Http\Controllers\Auth\PasswordResetController;
-
+use App\Models\Vehicle;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -27,6 +27,10 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     
     Route::post('/projects/{id}/add-vehicle', [ProjectsController::class, 'addVehicle']);
     Route::post('/projects/{id}/remove-vehicle', [ProjectsController::class, 'removeVehicle']);
+
+    //Obtiene los proyectos abiertos relacionados al centro en cuestión
+    Route::get('/centres/{id}/open-projects', [CentresController::class, 'showOpenProjects']);
+
 
     Route::get('/vehicles-types', [VehiclesController::class, 'types']);
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    

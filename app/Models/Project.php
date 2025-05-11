@@ -44,5 +44,13 @@ class Project extends Model
             ->withTimestamps();
     }
 
+    public function openVehicles()
+    {
+        return $this->hasMany(ProjectVehicle::class, 'project_id')
+        ->whereHas('project', function ($query) {
+            $query->where('is_open', 1);
+        });
+    }
+
 
 }

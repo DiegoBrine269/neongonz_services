@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Centre;
+use App\Models\Project;
+use App\Models\ProjectVehicle;
 use Illuminate\Http\Request;
 
 class CentresController extends Controller
@@ -41,6 +43,24 @@ class CentresController extends Controller
             'message' => 'Centro de ventas creado correctamente.',
             'centre' => $centre,
         ], 201);
+    }
+
+    public function showOpenProjects(int $id)
+    {
+        $projects = Project::with(['service' => function ($query) {
+            $query->select('id', 'name'); // Selecciona solo las columnas necesarias del servicio
+        }])
+        ->where('centre_id', $id)
+        ->get()
+        ->map(function ($project) {
+            return [
+                'id' => $project->id, // Solo el ID del proyecto
+                'service' => $project->service->name, // Solo el nombre del servicio
+
+            ];
+        });
+    
+        return response()->json($projects);
     }
 
     /**
