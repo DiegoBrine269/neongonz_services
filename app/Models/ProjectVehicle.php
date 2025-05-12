@@ -19,4 +19,9 @@ class ProjectVehicle extends Model
     {
         return $this->belongsTo(Project::class, 'project_id');
     }
+
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class, 'vehicle_id');
+    }
 }

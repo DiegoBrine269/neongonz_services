@@ -12,8 +12,11 @@ class CentresController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        if($request->cotizaciones == 'pendientes'){
+            
+        }
         return Centre::orderBy('name', 'asc')->get();
     }
 
@@ -51,6 +54,7 @@ class CentresController extends Controller
             $query->select('id', 'name'); // Selecciona solo las columnas necesarias del servicio
         }])
         ->where('centre_id', $id)
+        ->where('is_open', 1)
         ->get()
         ->map(function ($project) {
             return [

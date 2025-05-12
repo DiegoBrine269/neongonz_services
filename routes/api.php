@@ -24,7 +24,13 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::resource('vehicles', VehiclesController::class)->except(['create', 'edit']);
     Route::resource('services', ServicesController::class)->except(['create', 'edit']);
     Route::resource('projects', ProjectsController::class)->except(['create', 'edit']);
-    
+
+    //Extras de vehículos
+    Route::get('/vehicles-types', [VehiclesController::class, 'types']);
+    // Route::get('/vehicles', [VehiclesController::class, 'types']);
+
+
+    //Extras de proyectos
     Route::post('/projects/{id}/add-vehicle', [ProjectsController::class, 'addVehicle']);
     Route::post('/projects/{id}/remove-vehicle', [ProjectsController::class, 'removeVehicle']);
 
@@ -32,7 +38,6 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::get('/centres/{id}/open-projects', [CentresController::class, 'showOpenProjects']);
 
 
-    Route::get('/vehicles-types', [VehiclesController::class, 'types']);
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
 });
