@@ -14,7 +14,6 @@ class VehiclesController extends Controller
      */
     public function index(Request $request)
     {
-
         $vehicles = [];
 
         if ($request->invoice == 'pending') {
@@ -41,9 +40,27 @@ class VehiclesController extends Controller
             });
         }
         else{
-            $vehicles = Vehicle::with(['centre:id,name', 'type'])
-                ->select('eco', 'centre_id', 'vehicle_type_id')
-                ->get();
+            $query = Vehicle::with(['centre:id,name', 'type'])
+                ->select('eco', 'centre_id', 'vehicle_type_id');
+
+            // Apply filters from the request
+            if ($request->has('filter')) {
+                foreach ($request->filter as $filter) {
+                    if (isset($filter['field'], $filter['type'], $filter['value'])) {
+                        switch ($filter['type']) {
+                            case 'like':
+                                $query->where($filter['field'], 'like', '%' . $filter['value'] . '%');
+                                break;
+                            case '=':
+                                $query->where($filter['field'], '=', $filter['value']);
+                                break;
+                            // Add more cases as needed for other filter types
+                        }
+                    }
+                }
+            }
+
+            $vehicles = $query->paginate(2);
 
             $vehicles->map(function ($vehicle) {
                 $vehicle->centre_name = $vehicle->centre->name;

@@ -17,7 +17,14 @@ class CentresController extends Controller
         if($request->cotizaciones == 'pendientes'){
             
         }
-        return Centre::orderBy('name', 'asc')->get();
+
+        $centres = Centre::orderBy('name', 'asc')->get();
+        
+        $centres->makeHidden(['created_at', 'updated_at']);
+
+        
+
+        return $centres;
     }
 
 

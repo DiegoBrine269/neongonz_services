@@ -1,15 +1,16 @@
 <?php
 
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CentresController;
+use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
 use App\Http\Controllers\Auth\PasswordResetController;
-use App\Models\Vehicle;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -24,6 +25,8 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::resource('vehicles', VehiclesController::class)->except(['create', 'edit']);
     Route::resource('services', ServicesController::class)->except(['create', 'edit']);
     Route::resource('projects', ProjectsController::class)->except(['create', 'edit']);
+    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
+
 
     //Extras de vehículos
     Route::get('/vehicles-types', [VehiclesController::class, 'types']);

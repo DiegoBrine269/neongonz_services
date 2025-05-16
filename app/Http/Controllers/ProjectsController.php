@@ -20,7 +20,13 @@ class ProjectsController extends Controller
         $user = auth()->user();
 
         // Limitando los proyectos a los que el usuario tiene acceso
-        $query = Project::with(['centre', 'service'])->orderBy('updated_at', 'desc');
+
+        $query = Project::with([
+            'centre:id,name', // Incluye solo 'id' y 'name' de la tabla centres
+            'service:id,name' // Incluye solo 'id' y 'name' de la tabla services
+        ])
+        ->select('id', 'is_open', 'date', 'centre_id', 'service_id') // Selecciona solo los campos necesarios de la tabla projects
+        ->orderBy('updated_at', 'desc');
         $show_closed_param = request()->query('show_closed');
 
         if($user->role == 'user'){
@@ -78,8 +84,8 @@ class ProjectsController extends Controller
     public function show(string $id)
     {
         $project = Project::with([
-                'centre', 
-                'service',
+                'centre:id,name', 
+                'service:id,name',
                 'vehicles' => function ($query) {
                     $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id') // Especifica la tabla para evitar ambigüedad
                         ->with('type:id,type', 'projectUser:name,last_name')
@@ -96,9 +102,15 @@ class ProjectsController extends Controller
             ], 404);
         }
 
-        // $project->service->makeHidden(['created_at', 'updated_at']);
         // $project->centre->makeHidden(['id', 'location', 'responsible', 'created_at', 'updated_at']);
         // $project->vehicles->makeHidden(['pivot', 'created_at', 'updated_at']);
+        
+        $project->makeHidden(['created_at', 'updated_at']);
+        unset($project['centre_id']);
+        unset($project['service_id']);
+        unset($project['centre_id']);
+
+
 
         //Formatear los vehículos para incluir el campo commentary al mismo nivel
         $project->vehicles->transform(function ($vehicle) {
