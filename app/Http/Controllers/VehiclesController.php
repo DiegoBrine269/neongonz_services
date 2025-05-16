@@ -60,7 +60,7 @@ class VehiclesController extends Controller
                 }
             }
 
-            $vehicles = $query->paginate(2);
+            $vehicles = $query->paginate(20);
 
             $vehicles->map(function ($vehicle) {
                 $vehicle->centre_name = $vehicle->centre->name;
