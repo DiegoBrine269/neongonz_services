@@ -106,9 +106,8 @@ class ProjectsController extends Controller
         // $project->vehicles->makeHidden(['pivot', 'created_at', 'updated_at']);
         
         $project->makeHidden(['created_at', 'updated_at']);
-        unset($project['centre_id']);
-        unset($project['service_id']);
-        unset($project['centre_id']);
+        // unset($project['centre_id']);
+        // unset($project['service_id']);
 
 
 
@@ -116,11 +115,13 @@ class ProjectsController extends Controller
         $project->vehicles->transform(function ($vehicle) {
             return [
                 'id' => $vehicle->id,
+                // 'centre_id' => $vehicle->centre_id,
+                // 'service_id' => $vehicle->service_id,
                 'eco' => $vehicle->eco,
                 'type' => $vehicle->type->type,
                 'commentary' => $vehicle->pivot->commentary, // Extrae commentary de la tabla pivote
                 'user' => $vehicle->projectUser,
-                'created_at' => $vehicle->pivot->created_at->format('d/m/Y H:i:s'), // Formatear la fecha
+                'created_at' => $vehicle->pivot->created_at, // Formatear la fecha
             ];
         });
 
@@ -248,7 +249,43 @@ class ProjectsController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $project = Project::find($id);
+
+        if (!$project) {
+            return response()->json([
+                'message' => 'Proyecto no encontrado',
+            ], 404);
+        }
+
+        $fields = $request->validate([
+            'centre_id' => 'required|exists:centres,id',
+            'service_id' => 'required|exists:services,id',
+            'date' => "required|date",
+        ],[
+            'centre_id.required' => 'El campo centre_id es obligatorio.',
+            'centre_id.exists' => 'El centro especificado no existe.',
+            'service_id.required' => 'El campo service_id es obligatorio.',
+            'service_id.exists' => 'El servicio especificado no existe.',
+            'date.required' => 'La fecha es obligatoria.',
+            'date.date' => 'La fecha no es válida.',
+        ]);
+
+        $project->update([
+            'centre_id' => $fields['centre_id'],
+            'service_id' => $fields['service_id'],
+            'date' => $fields['date'],
+        ]);
+
+        dump($project->vehicles);
+        foreach ($project->vehicles as $vehicle) {
+            $vehicle->centre_id = $fields['centre_id'];
+            $vehicle->save();
+        }
+
+        return response()->json([
+            'message' => 'Proyecto actualizado correctamente',
+            // 'project' => $project,
+        ], 200);
     }
 
     /**

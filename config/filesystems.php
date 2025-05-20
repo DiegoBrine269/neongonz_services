@@ -60,6 +60,12 @@ return [
             'report' => false,
         ],
 
+        'bucket' => [
+            'driver' => 'local',
+            'root' => storage_path('app/bucket'), // carpeta simulada para el bucket
+            'visibility' => 'public',
+        ],
+
     ],
 
     /*

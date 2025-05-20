@@ -43,6 +43,8 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
+
+    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
 });
 
 // Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);

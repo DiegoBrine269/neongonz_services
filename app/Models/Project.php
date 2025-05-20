@@ -17,9 +17,9 @@ class Project extends Model
         'date'
     ];
 
-    protected $casts = [
-        'date' => 'date:d/m/Y',
-    ];
+    // protected $casts = [
+    //     'date' => 'date:d/m/Y',
+    // ];
 
     // protected function serializeDate(\DateTimeInterface $date)
     // {

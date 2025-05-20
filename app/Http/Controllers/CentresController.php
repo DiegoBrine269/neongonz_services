@@ -14,9 +14,6 @@ class CentresController extends Controller
      */
     public function index(Request $request)
     {
-        if($request->cotizaciones == 'pendientes'){
-            
-        }
 
         $centres = Centre::orderBy('name', 'asc')->get();
         

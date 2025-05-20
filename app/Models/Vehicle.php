@@ -55,4 +55,11 @@ class Vehicle extends Model
             'user_id',     // Local key en la tabla pivote
         );
     }
+
+    public function invoices()
+    {
+        return $this->belongsToMany(Invoice::class, 'invoice_vehicles', 'vehicle_id', 'invoice_id')
+                    ->withPivot('project_id') // Incluye campos adicionales de la tabla pivote si es necesario
+                    ->withTimestamps(); // Si la tabla pivote tiene timestamps
+    }
 }
