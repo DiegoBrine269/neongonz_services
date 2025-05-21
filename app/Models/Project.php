@@ -14,12 +14,14 @@ class Project extends Model
     protected $fillable = [
         'centre_id',
         'service_id',
-        'date'
+        'date',
+        'related_projects'
     ];
 
-    // protected $casts = [
-    //     'date' => 'date:d/m/Y',
-    // ];
+    protected $casts = [
+        // 'date' => 'date:d/m/Y',
+        'related_projects' => 'array',
+    ];
 
     // protected function serializeDate(\DateTimeInterface $date)
     // {

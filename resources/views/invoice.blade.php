@@ -153,10 +153,10 @@
         <p class="bold">Cotización para:</p>
         <table class="destinatario">
             <tr>
-                <td style="width: 75%">
+                <td style="width: 75%; padding:0">
                     BIMBO, S.A DE C.V
                 </td>
-                <td><p style="text-align: right"><span class="bold">At'n:</span> {{ $centre->responsible }}</p> </td>
+                <td><p style="line-height: 0; margin:0; text-align: right"><span class="bold">At'n:</span> {{ $centre->responsible }}</p> </td>
             </tr>
             <tr>
                 <td>

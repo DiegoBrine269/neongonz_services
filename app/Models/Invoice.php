@@ -12,6 +12,8 @@ class Invoice extends Model
         'date' => 'date:d/m/Y',
     ];
 
+
+
     public function invoiceVehicles() {
         return $this->hasMany(InvoiceVehicle::class);
     }

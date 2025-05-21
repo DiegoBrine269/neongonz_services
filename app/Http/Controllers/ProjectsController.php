@@ -261,6 +261,8 @@ class ProjectsController extends Controller
             'centre_id' => 'required|exists:centres,id',
             'service_id' => 'required|exists:services,id',
             'date' => "required|date",
+            'extra_projects' => 'nullable|array',
+            'extra_projects.*' => 'exists:projects,id',
         ],[
             'centre_id.required' => 'El campo centre_id es obligatorio.',
             'centre_id.exists' => 'El centro especificado no existe.',
@@ -270,13 +272,45 @@ class ProjectsController extends Controller
             'date.date' => 'La fecha no es válida.',
         ]);
 
+        // dump(json_encode($fields['extra_projects']));
+        $related_projects = $fields['extra_projects'] ?? [];
+
         $project->update([
             'centre_id' => $fields['centre_id'],
             'service_id' => $fields['service_id'],
             'date' => $fields['date'],
+            'related_projects' => json_encode($related_projects),
         ]);
 
-        dump($project->vehicles);
+        // Si hay proyectos extras, también asignarles el campo related_projects
+
+        dump($related_projects);
+        if (!empty($related_projects)) {
+            foreach ($related_projects as $id_extra_project) {
+                $extra_project = Project::find($id_extra_project);
+        
+                // Copiamos los proyectos relacionados
+                $_related_projects = $related_projects;
+        
+                // Quitamos el ID del proyecto actual de la lista
+                $_related_projects = array_filter($_related_projects, function ($id) use ($id_extra_project) {
+                    return $id !== $id_extra_project;
+                });
+        
+                // Agregamos el proyecto principal
+                $_related_projects[] = $project->id;
+
+                // dump($_related_projects);
+        
+                // Actualizamos el proyecto relacionado
+                $extra_project->update([
+                    'related_projects' => json_encode(array_values($_related_projects)), // Si usas cast a array
+                ]);
+            }
+        }
+        
+        
+
         foreach ($project->vehicles as $vehicle) {
             $vehicle->centre_id = $fields['centre_id'];
             $vehicle->save();
