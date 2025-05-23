@@ -41,6 +41,7 @@ class VehiclesController extends Controller
                         'service' => $projectVehicle->project->service->name,
                         'service_id' => $projectVehicle->project->service->id,
                         'centre_id' => $projectVehicle->project->centre_id,
+                        'date' => $projectVehicle->project->date,
                     ]
                 ];
             })
