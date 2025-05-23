@@ -6,6 +6,7 @@ use App\Models\Centre;
 use App\Models\Invoice;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
+use App\Models\InvoiceVehicle;
 use App\Models\ProjectVehicle;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -204,16 +205,22 @@ class InvoicesController extends Controller
         // Nombre del archivo PDF
         $filename = $invoice_number . '.pdf';
 
+        // Crear el directorio si no existe
+        if (!Storage::exists('invoices')) {
+            Storage::makeDirectory('invoices');
+        }
+
         // Guardar en el bucket
-        Storage::put($filename, $pdfContent);
+        Storage::put("invoices/$filename", $pdfContent);
 
         $invoice->path = $filename; // Solo el nombre, o puedes usar "bucket/$filename" si prefieres
         $invoice->save();
         
         // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
         return response($pdfContent, 200)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="' . $invoice_number . '.pdf"');
+        ->header('Content-Type', 'application/pdf')
+        ->header('Content-Disposition', 'attachment; filename="' . $invoice_number . '.pdf"')
+        ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
     public function downloadPdf(Invoice $invoice)
@@ -222,7 +229,7 @@ class InvoicesController extends Controller
         // $this->authorize('view', $invoice);
 
         // Obtener la ruta almacenada en el campo path
-        $path = $invoice->path;
+        $path = "invoices/".$invoice->path;
 
         // Verificar si el archivo existe en el almacenamiento
         if (!Storage::exists($path)) {
@@ -277,10 +284,12 @@ class InvoicesController extends Controller
                 ->update(['has_invoice' => false]);
         }
 
-        if ($invoice->path)
-            Storage::delete($invoice->path); 
+        InvoiceVehicle::where('invoice_id', $invoice->id)->delete();
 
-        // Eliminar la factura
+        if ($invoice->path)
+            Storage::delete("invoices/".$invoice->path); 
+
+        // Eliminar el pdf
         $invoice->delete();
 
         return response()->json(['message' => 'Cotización eliminada y vehículos actualizados correctamente.']);

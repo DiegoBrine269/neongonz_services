@@ -41,6 +41,11 @@ class ProjectsController extends Controller
 
         // $projects = Project::with(['centre', 'service'])->orderBy('id', 'desc')->get();
 
+        $projects = $projects->map(function ($project) {
+            $project->total_vehicles = $project->vehicles()->count();
+            return $project;
+        });
+
         return response()->json($projects);
     }
 

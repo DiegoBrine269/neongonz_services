@@ -200,7 +200,7 @@
                                 {{ $project->service . " (" . $type ."):" }} 
                                 {{ implode(', ', $grouped_vehicles_by_type->pluck('eco')->toArray()) }}
                             </td>
-                            <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ $price }}</td>
+                            <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price,2) }}</td>
                             <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($totalForGroup, 2) }}</td>
                         </tr>
                     @endforeach

@@ -19,7 +19,7 @@ class VehiclesController extends Controller
         if ($request->invoice == 'pending') {
             $vehicles = ProjectVehicle::with([
                 'vehicle:id,eco,vehicle_type_id', 
-                'vehicle.type:id',
+                'vehicle.type:id,type',
                 'project.centre:id,name',
                 'project.service:id,name',
             ])
@@ -33,6 +33,8 @@ class VehiclesController extends Controller
                     'eco' => $projectVehicle->vehicle->eco ?? null, // Obtén el eco del vehículo
                     'centre_id' => $projectVehicle->project->centre->id ?? null, // Obtén el nombre del centro
                     'vehicle_type_id' => $projectVehicle->vehicle->vehicle_type_id,
+                    'type' => $projectVehicle->vehicle->type->type,
+
                     'project_id' => $projectVehicle->project->id,
                     'project' => [
                         'id' => $projectVehicle->project->id,
