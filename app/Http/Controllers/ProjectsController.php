@@ -289,7 +289,7 @@ class ProjectsController extends Controller
 
         // Si hay proyectos extras, también asignarles el campo related_projects
 
-        dump($related_projects);
+        // dump($related_projects);
         if (!empty($related_projects)) {
             foreach ($related_projects as $id_extra_project) {
                 $extra_project = Project::find($id_extra_project);
