@@ -44,17 +44,16 @@ class Vehicle extends Model
             // ->withTimestamps();
     }
 
+    public function projectVehicle()
+    {
+        return $this->hasOne(ProjectVehicle::class)->latestOfMany(); // si solo quieres el más reciente
+    }
+    
     public function projectUser()
     {
-        return $this->hasOneThrough(
-            User::class,
-            ProjectVehicle::class,
-            'vehicle_id', // Foreign key en la tabla pivote (project_vehicles)
-            'id',         // Foreign key en la tabla users
-            'id',         // Local key en la tabla vehicles
-            'user_id',     // Local key en la tabla pivote
-        );
+        return $this->projectVehicle->user ?? null;
     }
+
 
     public function invoices()
     {

@@ -89,16 +89,18 @@ class ProjectsController extends Controller
     public function show(string $id)
     {
         $project = Project::with([
-                'centre:id,name', 
-                'service:id,name',
-                'vehicles' => function ($query) {
-                    $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id') // Especifica la tabla para evitar ambigüedad
-                        ->with('type:id,type', 'projectUser:name,last_name')
-                        ->orderBy('project_vehicles.id', 'desc');
-                }
-            ])
-            ->where('id', $id)
-            ->first();
+            'centre:id,name',
+            'service:id,name',
+            'vehicles' => function ($query) {
+                $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id')
+                    ->with([
+                        'type:id,type',
+                        'projectVehicle.user:id,name,last_name',
+                    ])
+                    ->orderBy('project_vehicles.id', 'desc');
+            }
+        ])->findOrFail($id);
+        
 
 
         if (!$project) {
@@ -114,23 +116,34 @@ class ProjectsController extends Controller
         // unset($project['centre_id']);
         // unset($project['service_id']);
 
+        $formatted = [
+            'id' => $project->id,
+            'centre_id' => $project->centre_id,
+            'service_id' => $project->service_id,
+            'is_open' => $project->is_open,
+            'date' => $project->date,
+            'related_projects' => $project->related_projects,
+            'centre' => $project->centre ? [
+                'id' => $project->centre->id,
+                'name' => $project->centre->name,
+            ] : null,
+            'service' => $project->service ? [
+                'id' => $project->service->id,
+                'name' => $project->service->name,
+            ] : null,
+            'vehicles' => $project->vehicles->map(function ($vehicle) {
+                return [
+                    'id' => $vehicle->id,
+                    'eco' => $vehicle->eco,
+                    'type' => optional($vehicle->type)->type,
+                    'user' => $vehicle->projectVehicle->user,
+                    'created_at' => optional($vehicle->projectVehicle)->created_at,
+                ];
+            })->toArray(),
+        ];
 
 
-        //Formatear los vehículos para incluir el campo commentary al mismo nivel
-        $project->vehicles->transform(function ($vehicle) {
-            return [
-                'id' => $vehicle->id,
-                // 'centre_id' => $vehicle->centre_id,
-                // 'service_id' => $vehicle->service_id,
-                'eco' => $vehicle->eco,
-                'type' => $vehicle->type->type,
-                'commentary' => $vehicle->pivot->commentary, // Extrae commentary de la tabla pivote
-                'user' => $vehicle->projectUser,
-                'created_at' => $vehicle->pivot->created_at, // Formatear la fecha
-            ];
-        });
-
-        return response()->json($project);
+        return response()->json($formatted);
     }
 
     public function addVehicle(Request $request, string $id)
@@ -200,6 +213,10 @@ class ProjectsController extends Controller
         if($request->extra_projects && is_array($request->extra_projects)){
             foreach($request->extra_projects as $id_extra_project){
                 $extra_project = Project::find($id_extra_project); 
+
+                if($extra_project->vehicles()->where('vehicle_id', $vehicle->id)->exists()){
+                    continue; // Si el vehículo ya está asociado a este proyecto, saltar
+                }
 
                 $extra_project->vehicles()->attach($vehicle->id, [
                     'commentary' => null,
