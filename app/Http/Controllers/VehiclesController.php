@@ -90,7 +90,7 @@ class VehiclesController extends Controller
             }
         
 
-            $vehicles = $query->paginate(20);
+            $vehicles = $query->orderBy('eco', 'asc')->paginate(20);
 
             $vehicles->map(function ($vehicle) {
                 $name = $vehicle->centre->name;
@@ -139,7 +139,7 @@ class VehiclesController extends Controller
 
     public function types()
     {
-        $types = DB::table('vehicles_types')->get();
+        $types = DB::table('vehicles_types')->select(['id', 'type'])->get();
         return $types;
     }
 }
