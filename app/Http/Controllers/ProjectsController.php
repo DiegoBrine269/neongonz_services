@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
-use App\Models\ProjectVehicle;
 use App\Models\Vehicle;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Models\ProjectVehicle;
 use Illuminate\Support\Facades\Log;
 
 class ProjectsController extends Controller
@@ -138,6 +139,7 @@ class ProjectsController extends Controller
                     'type' => optional($vehicle->type)->type,
                     'user' => $vehicle->projectVehicle->user,
                     'created_at' => optional($vehicle->projectVehicle)->created_at,
+                    'commentary' => optional($vehicle->projectVehicle)->commentary,
                 ];
             })->toArray(),
         ];
@@ -158,11 +160,12 @@ class ProjectsController extends Controller
         }
 
         $fields = $request->validate([
-            'eco' => 'required|numeric|digits:5',
+            'eco' => $request->usar_placa ? 'required|max:10' : 'required|numeric|digits:5',
             'type' => 'required|exists:vehicles_types,id',
             'commentary' => 'nullable|string|max:255',
         ],[
-            'eco.required' => 'El económico es obligatorio.',
+            'eco.max' => 'El económico o placa no puede tener más de 10 caracteres.',
+            'eco.required' => 'El económico o placa es obligatorio.',
             'eco.numeric' => 'El económico debe ser un número.',
             'eco.digits' => 'El económico debe tener 5 dígitos.',
             'type.required' => 'El campo de tipo de vehículo es obligatorio.',
@@ -176,7 +179,7 @@ class ProjectsController extends Controller
 
         if (!$vehicle) {
             $vehicle = Vehicle::create([
-                'eco' => $fields['eco'],
+                'eco' => Str::upper($fields['eco']),
                 'centre_id' => $project->centre_id,
                 'vehicle_type_id' => $fields['type'],
             ]);

@@ -145,6 +145,7 @@ class InvoicesController extends Controller
                 'service_vehicle_types' => $serviceVehicleTypes,
             ];
         });
+
     
         // Variables para usar fuera de la transacción
         $invoice = null;
@@ -191,6 +192,7 @@ class InvoicesController extends Controller
         });
 
 
+
     
         $pdf = Pdf::loadView('invoice', [
             'invoice_number' => $invoice_number,
@@ -204,6 +206,8 @@ class InvoicesController extends Controller
         
         // Nombre del archivo PDF
         $filename = $invoice_number . '.pdf';
+
+
 
         // Crear el directorio si no existe
         if (!Storage::exists('invoices')) {
