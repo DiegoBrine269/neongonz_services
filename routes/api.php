@@ -51,7 +51,7 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 // Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
-    Route::post('/projects/{id}/close', [ProjectsController::class, 'close']);
+    Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
 
 });
 

@@ -18,6 +18,7 @@ class VehiclesTypesSeeder extends Seeder
             ['type' => 'Camión - Mercedes Benz Sprinter'],
             ['type' => 'Camión - Fiat Ducato'],
             ['type' => 'Camión - JAC Sunray'],
+            ['type' => 'Camión - VK Stellar'],
             ['type' => 'Mini camioneta eléctrica'],
             ['type' => 'Camioneta (Nissan D22, Nissan D23)'],
             ['type' => 'Sedán|Hatchback (E10x, Aveo, Gol, Versa)'],

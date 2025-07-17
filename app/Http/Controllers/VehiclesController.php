@@ -139,7 +139,7 @@ class VehiclesController extends Controller
 
     public function types()
     {
-        $types = DB::table('vehicles_types')->select(['id', 'type'])->get();
+        $types = DB::table('vehicles_types')->select(['id', 'type'])->orderBy('order')->get();
         return $types;
     }
 }

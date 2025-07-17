@@ -362,7 +362,7 @@ class ProjectsController extends Controller
         $project->delete();
     }
 
-    public function close(Request $request, string $id) {
+    public function toggleStatus(Request $request, string $id) {
         $project = Project::find($id);
 
         if (!$project) {
@@ -371,11 +371,11 @@ class ProjectsController extends Controller
             ], 404);
         }
 
-        $project->is_open = 0;
+        $project->is_open = !$project->is_open;
         $project->save();
 
         return response()->json([
-            'message' => 'Proyecto cerrado correctamente',
+            'message' => 'Proyecto cerrado/abierto correctamente',
         ], 200);
     }
 }
