@@ -137,7 +137,11 @@ class ProjectsController extends Controller
                     'id' => $vehicle->id,
                     'eco' => $vehicle->eco,
                     'type' => optional($vehicle->type)->type,
-                    'user' => $vehicle->projectVehicle->user,
+                    'user' => [
+                        'id' => optional($vehicle->projectVehicle)->user->id,
+                        'name' => optional($vehicle->projectVehicle)->user->name . ' ' .
+                            optional($vehicle->projectVehicle)->user->last_name,
+                    ],
                     'created_at' => optional($vehicle->projectVehicle)->created_at,
                     'commentary' => optional($vehicle->projectVehicle)->commentary,
                 ];
