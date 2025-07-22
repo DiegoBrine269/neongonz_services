@@ -39,9 +39,9 @@ class Vehicle extends Model
 
     public function projects()
     {
-        return $this->belongsToMany(Project::class, 'project_vehicles', 'vehicle_id', 'project_id');
+        return $this->belongsToMany(Project::class, 'project_vehicles', 'vehicle_id', 'project_id')
+            ->withTimestamps();
             // ->withPivot(['commentary']);
-            // ->withTimestamps();
     }
 
     public function projectVehicle()

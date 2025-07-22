@@ -48,8 +48,20 @@ class VehiclesController extends Controller
             ;
         }
         else{
-            $query = Vehicle::with(['centre:id,name', 'type'])
-                ->select('eco', 'centre_id', 'vehicle_type_id');
+            $query = Vehicle::with([
+                'centre:id,name',
+                'type',
+                'projects' => function ($query) {
+                    $query->orderBy('project_vehicles.created_at', 'desc')
+                        ->limit(5)
+                        ->with([
+                            'centre:id,name',
+                            'service:id,name'
+                        ])
+                        ->select('projects.id', 'centre_id', 'service_id', 'date'); // especifica tabla en id
+                }
+            ])->select('id', 'eco', 'centre_id', 'vehicle_type_id');
+
             
             // Apply filters from the request
             if ($request->has('filter')) {
@@ -95,12 +107,22 @@ class VehiclesController extends Controller
             $vehicles->map(function ($vehicle) {
                 $name = $vehicle->centre->name;
                 $type = $vehicle->type->type;
+
                 unset($vehicle->centre);
                 unset($vehicle->type);
 
                 $vehicle->centre = $name;
                 $vehicle->type = $type;
-                
+                $vehicle->projects = $vehicle->projects->map(function ($project) {
+                    $project->service = $project->service->name;
+                    $project->centre = $project->centre->name;
+                    // $project->date = $project->created_at;
+                    // unset($project->centre);
+                    unset($project->service_id);
+                    unset($project->centre_id);
+                    unset($project->pivot);
+                    return $project;
+                });
             });
         }
 
