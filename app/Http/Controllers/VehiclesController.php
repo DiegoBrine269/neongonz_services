@@ -108,10 +108,10 @@ class VehiclesController extends Controller
                 $name = $vehicle->centre->name;
                 $type = $vehicle->type->type;
 
-                unset($vehicle->centre);
+                $vehicle->centre = $vehicle->centre;
+                // unset($vehicle->centre);
                 unset($vehicle->type);
 
-                $vehicle->centre = $name;
                 $vehicle->type = $type;
                 $vehicle->projects = $vehicle->projects->map(function ($project) {
                     $project->service = $project->service->name;
@@ -148,7 +148,17 @@ class VehiclesController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $fields = $request->validate([
+            'centre_id' => 'nullable|exists:centres,id' 
+        ],[
+            'centre_id.exists' => 'El centro seleccionado no es válido'
+        ]);
+
+        $vehicle = Vehicle::find($id);
+
+        $vehicle->update($fields);
+
+        return $vehicle;
     }
 
     /**
@@ -156,7 +166,7 @@ class VehiclesController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+
     }
 
     public function types()
