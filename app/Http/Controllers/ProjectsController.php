@@ -284,6 +284,25 @@ class ProjectsController extends Controller
 
     }
 
+    public function duplicate(Request $request, string $id) {
+        $project = Project::find($id);
+
+        $vehicles = $project->vehicles;
+
+        $new_project = $project->replicate();
+        $new_project->save();
+
+        // Adjunta los mismos vehículos al nuevo proyecto, incluyendo los campos del pivot
+        foreach ($vehicles as $vehicle) {
+            $new_project->vehicles()->attach($vehicle->id, [
+                'commentary' => $vehicle->pivot->commentary,
+                'user_id' => $vehicle->pivot->user_id,
+            ]);
+        }
+
+       return $project; 
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -376,6 +395,7 @@ class ProjectsController extends Controller
         $project = Project::find($id);
         $project->vehicles()->detach();
 
+
         $project->delete();
     }
 
@@ -396,9 +416,5 @@ class ProjectsController extends Controller
         ], 200);
     }
 
-    public function types() {
 
-        $types = ProjectType::all();
-        return $types;
-    }
 }

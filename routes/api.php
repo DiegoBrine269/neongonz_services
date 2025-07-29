@@ -28,7 +28,6 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::resource('vehicles', VehiclesController::class)->except(['create', 'edit']);
     Route::resource('services', ServicesController::class)->except(['create', 'edit']);
     Route::resource('projects', ProjectsController::class)->except(['create', 'edit']);
-    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
 
 
     //Extras de vehículos
@@ -37,21 +36,19 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
 
     //Extras de proyectos
+    Route::post('/projects/{id}/duplicate', [ProjectsController::class, 'duplicate']);
     Route::post('/projects/{id}/add-vehicle', [ProjectsController::class, 'addVehicle']);
     Route::post('/projects/{id}/remove-vehicle', [ProjectsController::class, 'removeVehicle']);
 
     //Obtiene los proyectos abiertos relacionados al centro en cuestión
     Route::get('/centres/{id}/open-projects', [CentresController::class, 'showOpenProjects']);
 
-    Route::get('/project-types', [ProjectsController::class, 'types']);
 
 
 
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
 
-    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
-    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
 
 
 });
@@ -62,6 +59,11 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
 
+    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
+
+
+    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
+    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
     
 
 });
