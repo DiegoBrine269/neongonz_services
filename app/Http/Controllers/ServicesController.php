@@ -14,10 +14,15 @@ class ServicesController extends Controller
     public function index()
     {
 
-        // Cargar las relaciones con services y centres
-        $serviceCentres = Service::orderBy('name', 'asc')->select('id', 'name')->get();
+        $user = auth()->user();
 
-        return response()->json($serviceCentres); 
+
+        $query = Service::orderBy('name', 'asc')->select('id', 'name');
+
+        $services = $query->get();
+
+
+        return $services;
     }
 
 
@@ -26,15 +31,22 @@ class ServicesController extends Controller
      */
     public function store(Request $request)
     {
+
         $fields = $request->validate([
             'name' => 'required|unique:services,name',
+            // 'is_public' => 'boolean|required',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
+            // 'is_public.boolean' => 'El campo is_public debe ser verdadero o falso',
+            // 'is_public.required' => 'El campo is_public es obligatorio',
         ]);
+
+        // dump($fields);
 
         $service = Service::create([
             'name' => $fields['name'],
+            // 'is_public' => $fields['is_public'],
         ]);
 
         return response()->json([

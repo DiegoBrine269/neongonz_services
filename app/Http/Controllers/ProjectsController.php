@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Vehicle;
+use App\Models\ProjectType;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\ProjectVehicle;
@@ -62,6 +63,7 @@ class ProjectsController extends Controller
             'centre_id' => 'required|exists:centres,id',
             'service_id' => 'required|exists:services,id',
             'date' => "required|date",
+            'commentary' => 'nullable|string|max:255',
         ],[
             'centre_id.required' => 'El campo centre_id es obligatorio.',
             'centre_id.exists' => 'El centro especificado no existe.',
@@ -69,13 +71,18 @@ class ProjectsController extends Controller
             'service_id.exists' => 'El servicio especificado no existe.',
             'date.required' => 'La fecha es obligatoria.',
             'date.date' => 'La fecha no es válida.',
-            // 'date.before' => 'La fecha debe ser anterior a hoy.',
+            'project_type_id.exists' => 'El tipo de proyecto especificado no existe.',
+            'commentary.string' => 'El comentario debe ser una cadena de texto.',
+            'commentary.max' => 'El comentario no puede tener más de 255 caracteres.',
+            
         ]);
+
 
         $project = Project::create([
             'centre_id' => $fields['centre_id'],
             'service_id' => $fields['service_id'],
             'date' => $fields['date'],
+            'commentary' => $fields['commentary'] ?? null,
         ]);
 
         return response()->json([
@@ -92,14 +99,16 @@ class ProjectsController extends Controller
         $project = Project::with([
             'centre:id,name',
             'service:id,name',
+            // 'type',
             'vehicles' => function ($query) {
                 $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id')
                     ->with([
-                        'type:id,type',
+                        // 'type:id,type',
                         'projectVehicle.user:id,name,last_name',
                     ])
                     ->orderBy('project_vehicles.id', 'desc');
             }
+
         ])->findOrFail($id);
         
 
@@ -119,6 +128,8 @@ class ProjectsController extends Controller
 
         $formatted = [
             'id' => $project->id,
+            // 'type' => $project->type,
+            'commentary' => $project->commentary,
             'centre_id' => $project->centre_id,
             'service_id' => $project->service_id,
             'is_open' => $project->is_open,
@@ -292,6 +303,7 @@ class ProjectsController extends Controller
             'date' => "required|date",
             'extra_projects' => 'nullable|array',
             'extra_projects.*' => 'exists:projects,id',
+            'commentary' => 'nullable|string|max:255',
         ],[
             'centre_id.required' => 'El campo centre_id es obligatorio.',
             'centre_id.exists' => 'El centro especificado no existe.',
@@ -299,6 +311,10 @@ class ProjectsController extends Controller
             'service_id.exists' => 'El servicio especificado no existe.',
             'date.required' => 'La fecha es obligatoria.',
             'date.date' => 'La fecha no es válida.',
+            'extra_projects.array' => 'Los proyectos extras deben ser un array.',
+            'extra_projects.*.exists' => 'Uno o más proyectos extras especificados no existen.',
+            'commentary.string' => 'El comentario debe ser una cadena de texto.',
+            'commentary.max' => 'El comentario no puede tener más de 255 caracteres.',
         ]);
 
         // dump(json_encode($fields['extra_projects']));
@@ -309,6 +325,7 @@ class ProjectsController extends Controller
             'service_id' => $fields['service_id'],
             'date' => $fields['date'],
             'related_projects' => json_encode($related_projects),
+            'commentary' => $fields['commentary'], // Si usas cast a array
         ]);
 
         // Si hay proyectos extras, también asignarles el campo related_projects
@@ -377,5 +394,11 @@ class ProjectsController extends Controller
         return response()->json([
             'message' => 'Proyecto cerrado/abierto correctamente',
         ], 200);
+    }
+
+    public function types() {
+
+        $types = ProjectType::all();
+        return $types;
     }
 }

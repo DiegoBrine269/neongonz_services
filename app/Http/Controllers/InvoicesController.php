@@ -61,11 +61,17 @@ class InvoicesController extends Controller
                             $query->where($field, '=', $value);
                         }
                     }
+                    elseif ($field === 'services') {
+                        $query->where('services', 'like', '%'. $value . '%');
+                    }
+                    elseif ($field === 'internal_commentary') {
+                        $query->where('internal_commentary', 'like', '%'. $value . '%');
+                    }
                 }
             }
         }
     
-        $invoices = $query->orderBy('id', 'desc')->paginate(20);
+        $invoices = $query->where('completed', true)->orderBy('updated_at', 'desc')->paginate(20);
         
     
         $invoices->map(function ($invoice) {
@@ -77,6 +83,18 @@ class InvoicesController extends Controller
         return $invoices;
     }
     
+
+    public function pending()
+    {
+
+        $invoices = Invoice::with('centre')
+        ->where('completed', false)
+        ->orderBy('id', 'desc')
+        ->get();
+
+
+        return $invoices;
+    }
 
 
     /**
@@ -165,11 +183,15 @@ class InvoicesController extends Controller
                 }
             }
 
+
+            $includedServices = $groupedByProject->pluck('service')->unique()->toArray();
+
             $invoice = Invoice::create([
                 'centre_id' => $centre->id,
                 'date' => today(),
                 'comments' => $fields['comments'],
                 'total' => $grandTotal,
+                'services' => implode(", ", $includedServices)
             ]);
             
     
@@ -200,6 +222,7 @@ class InvoicesController extends Controller
             'centre' => $centre,
             'projects' => $groupedByProject,
             'comments' => $fields['comments'],
+            'custom' => false
         ]);
         
         $pdfContent = $pdf->output();
@@ -227,6 +250,127 @@ class InvoicesController extends Controller
         ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
+    public function createCustom(Request $request)
+    {
+        $fields = $request->validate([
+            'invoice_id' => 'nullable|exists:invoices,id',
+            'centre_id' => 'required|exists:centres,id',
+            'concept' => 'required|string|max:255',
+            'quantity' => 'required|numeric|min:1',
+            'price' => 'required|numeric|min:1',
+            'comments' => 'nullable|string|max:255',
+            'completed' => 'boolean',
+            'internal_commentary' => 'nullable|string|max:255',
+
+            
+        ], [
+            'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
+            'centre_id.required' => 'El centro es obligatorio.',
+            'centre_id.exists' => 'El centro seleccionado no existe.',
+            'concept.required' => 'El concepto es obligatorio.',
+            'quantity.required' => 'La cantidad es obligatoria.',
+            'price.required' => 'El precio es obligatorio.',
+            'quantity.numeric' => 'La cantidad debe ser un número.',
+            'price.numeric' => 'El precio debe ser un número.',
+            'quantity.min' => 'La cantidad debe ser al menos 1.',
+            'price.min' => 'El precio debe ser al menos 1.',
+            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'concept.max' => 'El concepto debe ser menor a 255 caracteres.',
+            'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
+            'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
+        ]);
+    
+
+    
+        // Variables para usar fuera de la transacción
+        $invoice = null;
+        $invoice_number = null;
+    
+        
+
+        if($fields['invoice_id']){
+            $invoice = Invoice::find($fields['invoice_id']);
+            $invoice->update($fields);
+            
+            // dump($invoice);
+        }else {
+            $invoice = Invoice::create([
+                'centre_id' => $fields['centre_id'],
+                'date' => today(),
+                'comments' => $fields['comments'] ?? null,
+                'total' => $fields['quantity'] * $fields['price'],
+                'completed' => $fields['completed'] , 
+                'concept' => $fields['concept'],
+                'quantity' => $fields['quantity'],
+                'price' => $fields['price'],
+
+                'internal_commentary' => $fields['internal_commentary'] ?? null,
+            ]);
+        }
+
+        
+        
+        $today = today()->format('Ymd');
+        $invoice_number = "COT_$today" . "_" . $fields['centre_id'] . "_" . $invoice->id;
+        $invoice->invoice_number = $invoice_number;
+        $invoice->save();
+        
+        
+        $centre = Centre::find($fields['centre_id']);
+        
+        // dump($fields['completed']);
+
+        if(!$fields['completed']) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Factura creada como borrador.',
+                'invoice_number' => $invoice_number,
+                'invoice_id' => $invoice->id,
+
+
+            ], 201);
+        }
+
+
+        // dump($fields);
+
+        $pdf = Pdf::loadView('invoice', [
+            'invoice_number' => $invoice_number,
+            'date' => Carbon::now()->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
+            'centre' => $centre,
+            'comments' => $fields['comments'] ?? null,
+            'custom' => true,
+            'concept' => $fields['concept'],
+            'quantity' => $fields['quantity'],
+            'price' => $fields['price'],
+        ]);
+        
+        $pdfContent = $pdf->output();
+        
+        // Nombre del archivo PDF
+        $filename = $invoice_number . '.pdf';
+
+
+
+        // Crear el directorio si no existe
+        if (!Storage::exists('invoices')) {
+            Storage::makeDirectory('invoices');
+        }
+
+        // Guardar en el bucket
+        Storage::put("invoices/$filename", $pdfContent);
+
+        $invoice->path = $filename; // Solo el nombre, o puedes usar "bucket/$filename" si prefieres
+        $invoice->save();
+        
+        // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
+        return response($pdfContent, 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $invoice_number . '.pdf"')
+            ->header('Access-Control-Expose-Headers', 'Content-Disposition');
+    }
+
+
     public function downloadPdf(Invoice $invoice)
     {
         // Validar que el usuario puede acceder a esta factura
@@ -250,21 +394,49 @@ class InvoicesController extends Controller
     }
     
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
 
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
     {
-        //
+        $invoice = Invoice::find($id);
+
+        if (!$invoice) {
+            return response()->json(['error' => 'Factura no encontrada.'], 404);
+        }
+
+        $fields = $request->validate([
+            'total' => 'required|numeric|min:0',
+            'comments' => 'nullable|string|max:255',
+            'completed' => 'boolean',
+            'concept' => 'required|string|max:255',
+            'quantity' => 'required|numeric|min:1',
+            'price' => 'required|numeric|min:1',
+            'internal_commentary' => 'nullable|string|max:255',
+
+        ], [
+
+            'total.required' => 'El total es obligatorio.', 
+            'total.numeric' => 'El total debe ser un número.',
+            'total.min' => 'El total debe ser al menos 0.',
+            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'concept.required' => 'El concepto es obligatorio.',
+            'concept.max' => 'El concepto debe ser menor a 255 caracteres.',
+            'quantity.required' => 'La cantidad es obligatoria.',
+            'quantity.numeric' => 'La cantidad debe ser un número.',
+            'quantity.min' => 'La cantidad debe ser al menos 1.',
+            'price.required' => 'El precio es obligatorio.',
+            'price.numeric' => 'El precio debe ser un número.',
+            'price.min' => 'El precio debe ser al menos 1.',
+            'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
+            'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
+        ]);
+
+
+        $invoice->update($fields);
+
+        return response()->json(['message' => 'Factura actualizada correctamente.', 'invoice' => $invoice]);
     }
 
     /**

@@ -12,10 +12,12 @@ class Project extends Model
     // protected $table = 'service_vehicle';1
 
     protected $fillable = [
+        'project_type_id',
         'centre_id',
         'service_id',
         'date',
-        'related_projects'
+        'related_projects',
+        'commentary'
     ];
 
     protected $casts = [
@@ -27,6 +29,11 @@ class Project extends Model
     // {
     //     return $date->format('d/m/Y');
     // }
+
+    public function type()
+    {
+        return $this->belongsTo(ProjectType::class, 'project_type_id');
+    }
 
     public function service()
     {

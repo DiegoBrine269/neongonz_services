@@ -21,6 +21,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
+    
+    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
+
     Route::resource('centres', CentresController::class)->except(['create', 'edit']);
     Route::resource('vehicles', VehiclesController::class)->except(['create', 'edit']);
     Route::resource('services', ServicesController::class)->except(['create', 'edit']);
@@ -40,11 +43,17 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     //Obtiene los proyectos abiertos relacionados al centro en cuestión
     Route::get('/centres/{id}/open-projects', [CentresController::class, 'showOpenProjects']);
 
+    Route::get('/project-types', [ProjectsController::class, 'types']);
+
+
 
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
 
     Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
+    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
+
+
 });
 
 // Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
@@ -52,6 +61,8 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
+
+    
 
 });
 

@@ -136,7 +136,6 @@
                         <p><span class="bold" >Número:</span> {{$invoice_number}}</p>
                         <p><span class="bold" >Lugar de expedición</span>: Ciudad de México</p>
                         <p><span class="bold" >Fecha de expedición</span>: {{$date}}</p>
-
                     </div>
                 </td>
             </tr>
@@ -183,37 +182,54 @@
             @endphp
 
 
-            @foreach ($projects as $project)                
-                @foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price)
+            @if($custom)
+                <tr>
+                    <td class="text-center" style="min-width: 70px">{{ $quantity }}</td>
+                    <td >
+                        {{ $concept }} 
+                    </td>
+                    <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price, 2) }}</td>
+                    <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($quantity * $price, 2) }}</td>
+                </tr>
 
-                    @foreach ($grouped_by_price as $data)
-                        @php
-                            $grouped_vehicles_by_type = $data['group'];
-                            $type = $data['type'];
-                            // $grouped_vehicles = $data['group']; // Obtén el grupo de vehículos
-                            $totalForGroup = $grouped_vehicles_by_type->sum('price'); // Calcula el total del grupo
-                            $grandTotal += $totalForGroup; 
-                        @endphp
-                        <tr>
-                            <td class="text-center" style="min-width: 70px">{{ count( $grouped_vehicles_by_type) }}</td>
-                            <td >
-                                {{ $project->service . " (" . $type ."):" }} 
-                                {{ implode(', ', $grouped_vehicles_by_type->pluck('eco')->toArray()) }}
-                            </td>
-                            <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price,2) }}</td>
-                            <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($totalForGroup, 2) }}</td>
-                        </tr>
+            @php
+                $grandTotal = $quantity * $price; 
+            @endphp
+            
+            {{-- Si no es custom, muestra los vehículos agrupados por proyecto y tipo --}}
+            @else
+                @foreach ($projects as $project)                
+                    @foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price)
+
+                        @foreach ($grouped_by_price as $data)
+                            @php
+                                $grouped_vehicles_by_type = $data['group'];
+                                $type = $data['type'];
+                                // $grouped_vehicles = $data['group']; // Obtén el grupo de vehículos
+                                $totalForGroup = $grouped_vehicles_by_type->sum('price'); // Calcula el total del grupo
+                                $grandTotal += $totalForGroup; 
+                            @endphp
+                            <tr>
+                                <td class="text-center" style="min-width: 70px">{{ count( $grouped_vehicles_by_type) }}</td>
+                                <td >
+                                    {{ $project->service . " (" . $type ."):" }} 
+                                    {{ implode(', ', $grouped_vehicles_by_type->pluck('eco')->toArray()) }}
+                                </td>
+                                <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price,2) }}</td>
+                                <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($totalForGroup, 2) }}</td>
+                            </tr>
+                        @endforeach
                     @endforeach
                 @endforeach
-            @endforeach
+            @endif
+
+
 
                 <tr><td></td><td></td><td></td> <td></td></tr>
                 <tr>
                     <td></td>
                     <td></td>
-                    <td class="text-right">SUBTOTAL</td>
-                    {{-- <td class="text-right"><span class="text-left">$</span> </td> --}}
-                    
+                    <td class="text-right">SUBTOTAL</td>                    
                     <td class="text-right"><span class="text-left">$</span> {{ number_format($grandTotal, 2)}} </td>
                 </tr>
         </table>

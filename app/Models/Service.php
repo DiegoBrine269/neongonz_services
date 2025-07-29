@@ -9,8 +9,13 @@ class Service extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'is_public' => 'boolean',
+    ];
+
     protected $fillable = [
         'name',
+        'is_public',
     ];
 
     public function projects()
