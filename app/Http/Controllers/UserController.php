@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
     public function index() {
-        $users = User::all();
+        $users = User::orderByRaw("name || ' ' || last_name ASC")->get();
 
         return $users;
     }
