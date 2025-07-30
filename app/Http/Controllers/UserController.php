@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProjectVehicle;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -9,7 +10,44 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-        /**
+    public function index() {
+        $users = User::all();
+
+        return $users;
+    }
+
+    public function performance (Request $request, string $id) {
+        $projectsQuery = ProjectVehicle::with([
+            'project' => function ($query) {
+                $query->select('id', 'date', 'centre_id', 'service_id')
+                    ->with('centre:id,name')
+                    ->with('service:id,name'); 
+            },
+            'vehicle' => function ($query) {
+                $query->select('id', 'eco', 'vehicle_type_id')
+                    ->with('type:id,type'); // 👈 Solo trae los campos necesarios
+            }
+        ])
+        ->where('user_id', $id)
+        
+        ->select('id', 'project_id', 'vehicle_id', 'created_at');
+
+        // Aplica filtros de fecha si están presentes
+        if ($request->filled('date_start')) {
+            $projectsQuery->whereDate('created_at', '>=', $request->date_start);
+        }
+
+        if ($request->filled('date_end')) {
+            $projectsQuery->whereDate('created_at', '<=', $request->date_end);
+        }
+
+        $projects = $projectsQuery->get();
+
+
+        return $projects;
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)

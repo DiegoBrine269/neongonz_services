@@ -24,10 +24,10 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     
     Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
 
-    Route::resource('centres', CentresController::class)->except(['create', 'edit']);
-    Route::resource('vehicles', VehiclesController::class)->except(['create', 'edit']);
-    Route::resource('services', ServicesController::class)->except(['create', 'edit']);
-    Route::resource('projects', ProjectsController::class)->except(['create', 'edit']);
+    Route::apiResource('centres', CentresController::class);
+    Route::apiResource('vehicles', VehiclesController::class);
+    Route::apiResource('services', ServicesController::class);
+    Route::apiResource('projects', ProjectsController::class);
 
 
     //Extras de vehículos
@@ -57,6 +57,11 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 // Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
+    Route::get('/users/{id}/performance', [UserController::class, 'performance']);
+
+
+    Route::get('/users', [UserController::class, 'index']);
+
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
 
     Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
@@ -64,6 +69,8 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
 
     Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
     Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
+
+
     
 
 });
