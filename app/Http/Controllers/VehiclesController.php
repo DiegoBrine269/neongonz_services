@@ -73,7 +73,7 @@ class VehiclesController extends Controller
                         $value = $filter['value'];
             
                         // Si el filtro es para un campo relacionado
-                        if ($field === 'centre') {
+                        if ($field === 'centre.name') {
                             $query->whereHas('centre', function ($q) use ($type, $value) {
                                 if ($type === 'like') {
                                     $q->where('name', 'ilike', '%' . $value . '%');
