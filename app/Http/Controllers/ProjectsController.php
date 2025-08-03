@@ -205,9 +205,11 @@ class ProjectsController extends Controller
 
             $request->validate([
                 'eco' => function ($attribute, $value, $fail) use ($vehicle, $project) {
-                    if ($vehicle->centre_id != $project->centre_id) {
-                        $fail('El vehículo pertenece a otro centro de ventas.');
-                    }
+                    // Se elimina a petición de Carlos, en su lugar, se actualiza el vehículo
+                    // if ($vehicle->centre_id != $project->centre_id) {
+                    //     $fail('El vehículo pertenece a otro centro de ventas.');
+                    // }
+                    $vehicle->centre_id = $project->centre_id;
 
 
                     if ($project->vehicles()->where('vehicle_id', $vehicle->id)->exists()) {
@@ -215,7 +217,7 @@ class ProjectsController extends Controller
                     }
                 },
             ]);
-            
+            $vehicle->save();
         }
 
         $project->vehicles()->attach($vehicle->id, [

@@ -21,31 +21,42 @@ class VehiclesController extends Controller
                 'vehicle:id,eco,vehicle_type_id', 
                 'vehicle.type:id,type',
                 'project.centre:id,name',
-                'project.service:id,name',
+                'project.service'=> function ($query) {
+                    return $query->with('vehicleTypes')->get();
+                }
             ])
             ->select('id', 'vehicle_id', 'project_id') 
             ->where('has_invoice', 0)
             ->get()
             ->map(function ($projectVehicle) {
+                $service = $projectVehicle->project->service;
+                $vehicleTypeId = $projectVehicle->vehicle->vehicle_type_id;
+
+                // Filtrar solo el tipo de vehículo asociado al vehículo actual
+                $filteredType = $service->vehicleTypes
+                    ->firstWhere('id', $vehicleTypeId);
+
                 return [
                     'id' => $projectVehicle->id,
                     'vehicle_id' => $projectVehicle->vehicle->id,
-                    'eco' => $projectVehicle->vehicle->eco ?? null, // Obtén el eco del vehículo
-                    'centre_id' => $projectVehicle->project->centre->id ?? null, // Obtén el nombre del centro
-                    'vehicle_type_id' => $projectVehicle->vehicle->vehicle_type_id,
+                    'eco' => $projectVehicle->vehicle->eco ?? null,
+                    'centre_id' => $projectVehicle->project->centre->id ?? null,
+                    'vehicle_type_id' => $vehicleTypeId,
                     'type' => $projectVehicle->vehicle->type->type,
 
                     'project_id' => $projectVehicle->project->id,
                     'project' => [
                         'id' => $projectVehicle->project->id,
-                        'service' => $projectVehicle->project->service->name,
-                        'service_id' => $projectVehicle->project->service->id,
+                        'service' => $service->name,
+                        'service_id' => $service->id,
                         'centre_id' => $projectVehicle->project->centre_id,
                         'date' => $projectVehicle->project->date,
-                    ]
+                    ],
+
+                    // Precio obtenido desde la tabla pivot service_vehicle_type
+                    'price' => $filteredType?->pivot?->price ?? null,
                 ];
-            })
-            ;
+            });
         }
         else{
             $query = Vehicle::with([
