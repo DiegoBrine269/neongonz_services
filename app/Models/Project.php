@@ -48,7 +48,7 @@ class Project extends Model
     public function vehicles()
     {
         return $this->belongsToMany(Vehicle::class, 'project_vehicles', 'project_id', 'vehicle_id')
-            ->withPivot('commentary', 'user_id') // Incluye el campo commentary de la tabla pivote    
+            ->withPivot('commentary', 'user_id', 'created_at') // Incluye el campo commentary de la tabla pivote    
             ->with(['type', 'project'])
             ->withTimestamps();
     }

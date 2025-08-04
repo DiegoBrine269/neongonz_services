@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\Project;
 use App\Models\Vehicle;
 use App\Models\ProjectType;
@@ -126,6 +127,14 @@ class ProjectsController extends Controller
         // unset($project['centre_id']);
         // unset($project['service_id']);
 
+
+        $vehicles = $project->vehicles;
+        // Colección de usuarios
+        //obtener todos los user_id únicos desde el pivote
+        $userIds = $vehicles->pluck('pivot.user_id')->filter()->unique();
+        //obtener todos los usuarios relacionados en una sola consulta
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
         $formatted = [
             'id' => $project->id,
             // 'type' => $project->type,
@@ -143,20 +152,24 @@ class ProjectsController extends Controller
                 'id' => $project->service->id,
                 'name' => $project->service->name,
             ] : null,
-            'vehicles' => $project->vehicles->map(function ($vehicle) {
+            'vehicles' => $vehicles->map(function ($vehicle) use ($users) {
+                $pivot = $vehicle->pivot;
+
+                // Consultando en colección en memoria
+                $user = $pivot?->user_id ? $users->get($pivot->user_id) : null;
+
                 return [
                     'id' => $vehicle->id,
                     'eco' => $vehicle->eco,
                     'type' => optional($vehicle->type)->type,
-                    'user' => [
-                        'id' => optional($vehicle->projectVehicle)->user->id,
-                        'name' => optional($vehicle->projectVehicle)->user->name . ' ' .
-                            optional($vehicle->projectVehicle)->user->last_name,
-                    ],
-                    'created_at' => optional($vehicle->projectVehicle)->created_at,
-                    'commentary' => optional($vehicle->projectVehicle)->commentary,
+                    'user' => $user ? [
+                        'id' => $user->id,
+                        'name' => $user->name . ' ' . $user->last_name,
+                    ] : null,
+                    'created_at' => $pivot->created_at,
+                    'commentary' => $pivot->commentary,
                 ];
-            })->toArray(),
+            })->toArray()
         ];
 
 
