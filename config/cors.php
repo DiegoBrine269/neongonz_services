@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173', 'https://neongonz-services.netlify.app', 'http://192.168.0.11:5173'],
+    'allowed_origins' => ['http://localhost:5173', 'https://neongonz-services.netlify.app', 'http://192.168.0.2:5173'],
 
     'allowed_origins_patterns' => [],
 

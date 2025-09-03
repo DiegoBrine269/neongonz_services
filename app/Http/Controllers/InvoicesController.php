@@ -11,6 +11,7 @@ use App\Models\ProjectVehicle;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -40,7 +41,7 @@ class InvoicesController extends Controller
                         }
                     }
     
-                    if ($field === 'centre') {
+                    elseif ($field === 'centre') {
                         $query->whereHas('centre', function ($q) use ($type, $value) {
                             if ($type === 'like') {
                                 $q->where('name', 'ilike', '%' . $value . '%');
@@ -70,8 +71,22 @@ class InvoicesController extends Controller
                 }
             }
         }
+
+        $invoices =    
+            $query->when(request('sent_at') === 'null', fn($q) =>
+                $q->whereNull('sent_at')
+            )
+            ->when(request('sent_at') !== null && request('sent_at') !== 'null', fn($q) =>
+                $q->where('sent_at', request('sent_at'))
+            );
     
-        $invoices = $query->where('completed', true)->orderBy('updated_at', 'desc')->paginate(20);
+        $invoices = $query->where('completed', true)->orderBy('updated_at', 'desc');
+
+        $shouldPaginate = filter_var($request->query('paginate', true), FILTER_VALIDATE_BOOLEAN);
+
+        $invoices = $shouldPaginate
+                    ? $invoices->paginate(20)
+                    : $invoices->get();
         
     
         $invoices->map(function ($invoice) {
@@ -214,8 +229,7 @@ class InvoicesController extends Controller
         });
 
 
-
-    
+  
         $pdf = Pdf::loadView('invoice', [
             'invoice_number' => $invoice_number,
             'date' => Carbon::now()->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
@@ -240,14 +254,34 @@ class InvoicesController extends Controller
         // Guardar en el bucket
         Storage::put("invoices/$filename", $pdfContent);
 
-        $invoice->path = $filename; // Solo el nombre, o puedes usar "bucket/$filename" si prefieres
+        $html = view('email', [
+            'destinatario' => $centre->responsible
+        ])->render();
+
+        Resend::emails()->send([
+            'from' => 'Neon Gonz <servicios@neongonz.com>',
+            'to' => ['diegooloarte269@gmail.com'],
+            'cc' => ['neongonz@hotmail.com'],
+            'subject' => 'Solicitud de órdenes de compra',
+            'reply_to' => 'neongonz@hotmail.com',
+            'html' => $html,
+            'attachments' => [
+                [
+                    'filename' => $filename,
+                    'content' => base64_encode($pdfContent),
+                    'contentType' => 'application/pdf',
+                ]
+            ],
+        ]);
+
+        $invoice->path = $filename; 
         $invoice->save();
         
         // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
         return response($pdfContent, 200)
-        ->header('Content-Type', 'application/pdf')
-        ->header('Content-Disposition', 'attachment; filename="' . $invoice_number . '.pdf"')
-        ->header('Access-Control-Expose-Headers', 'Content-Disposition');
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $invoice_number . '.pdf"')
+            ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
     public function createCustom(Request $request)
@@ -261,7 +295,7 @@ class InvoicesController extends Controller
             'comments' => 'nullable|string|max:255',
             'completed' => 'boolean',
             'internal_commentary' => 'nullable|string|max:255',
-
+            'date' => 'required|date|before_or_equal:today',
             
         ], [
             'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
@@ -278,6 +312,9 @@ class InvoicesController extends Controller
             'concept.max' => 'El concepto debe ser menor a 255 caracteres.',
             'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
             'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'date.required' => 'La fecha es obligatoria.',
+            'date.date' => 'La fecha no es válida.',
+            'date.before_or_equal' => 'La fecha no puede ser futura.',
         ]);
     
 
@@ -296,14 +333,14 @@ class InvoicesController extends Controller
         }else {
             $invoice = Invoice::create([
                 'centre_id' => $fields['centre_id'],
-                'date' => today(),
+                'date' => $fields['date'],
                 'comments' => $fields['comments'] ?? null,
                 'total' => $fields['quantity'] * $fields['price'],
                 'completed' => $fields['completed'] , 
                 'concept' => $fields['concept'],
                 'quantity' => $fields['quantity'],
                 'price' => $fields['price'],
-
+                'services' => $fields['concept'] ?? null,
                 'internal_commentary' => $fields['internal_commentary'] ?? null,
             ]);
         }
@@ -343,6 +380,7 @@ class InvoicesController extends Controller
             'concept' => $fields['concept'],
             'quantity' => $fields['quantity'],
             'price' => $fields['price'],
+            
         ]);
         
         $pdfContent = $pdf->output();
@@ -360,8 +398,12 @@ class InvoicesController extends Controller
         // Guardar en el bucket
         Storage::put("invoices/$filename", $pdfContent);
 
-        $invoice->path = $filename; // Solo el nombre, o puedes usar "bucket/$filename" si prefieres
+        $invoice->path = $filename; 
         $invoice->save();
+
+
+
+        // Enviando factura por correo
         
         // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
         return response($pdfContent, 200)
@@ -414,6 +456,7 @@ class InvoicesController extends Controller
             'quantity' => 'required|numeric|min:1',
             'price' => 'required|numeric|min:1',
             'internal_commentary' => 'nullable|string|max:255',
+            'date' => 'required|date|before_or_equal:today',
 
         ], [
 
@@ -431,6 +474,9 @@ class InvoicesController extends Controller
             'price.min' => 'El precio debe ser al menos 1.',
             'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
             'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'date.required' => 'La fecha es obligatoria.',
+            'date.date' => 'La fecha no es válida.',
+            'date.before_or_equal' => 'La fecha no puede ser futura.',
         ]);
 
 
