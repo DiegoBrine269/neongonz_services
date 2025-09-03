@@ -258,21 +258,21 @@ class InvoicesController extends Controller
             'destinatario' => $centre->responsible
         ])->render();
 
-        Resend::emails()->send([
-            'from' => 'Neon Gonz <servicios@neongonz.com>',
-            'to' => ['diegooloarte269@gmail.com'],
-            'cc' => ['neongonz@hotmail.com'],
-            'subject' => 'Solicitud de órdenes de compra',
-            'reply_to' => 'neongonz@hotmail.com',
-            'html' => $html,
-            'attachments' => [
-                [
-                    'filename' => $filename,
-                    'content' => base64_encode($pdfContent),
-                    'contentType' => 'application/pdf',
-                ]
-            ],
-        ]);
+        // Resend::emails()->send([
+        //     'from' => 'Neon Gonz <servicios@neongonz.com>',
+        //     'to' => ['diegooloarte269@gmail.com'],
+        //     'cc' => ['neongonz@hotmail.com'],
+        //     'subject' => 'Solicitud de órdenes de compra',
+        //     'reply_to' => 'neongonz@hotmail.com',
+        //     'html' => $html,
+        //     'attachments' => [
+        //         [
+        //             'filename' => $filename,
+        //             'content' => base64_encode($pdfContent),
+        //             'contentType' => 'application/pdf',
+        //         ]
+        //     ],
+        // ]);
 
         $invoice->path = $filename; 
         $invoice->save();
@@ -483,6 +483,20 @@ class InvoicesController extends Controller
         $invoice->update($fields);
 
         return response()->json(['message' => 'Factura actualizada correctamente.', 'invoice' => $invoice]);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(string $id)
+    {
+        $invoice = Invoice::with(['centre', 'vehicles:id,eco'])->find($id);
+
+        if (!$invoice) {
+            return response()->json(['error' => 'Factura no encontrada.'], 404);
+        }
+
+        return $invoice;
     }
 
     /**
