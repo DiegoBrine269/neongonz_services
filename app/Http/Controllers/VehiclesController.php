@@ -41,6 +41,7 @@ class VehiclesController extends Controller
                     $q->where('centre_id', $request->centre_id);
                 });
             })
+            ->where('created_at', '>=', '2025-09-01') // Limitar a los últimos 6 meses
             ->get()
             ->map(function ($projectVehicle) {
                 $service = $projectVehicle->project->service;

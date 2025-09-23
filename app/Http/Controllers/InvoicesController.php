@@ -396,7 +396,8 @@ class InvoicesController extends Controller
                 
                 ProjectVehicle::where('vehicle_id', $invVehicle->vehicle_id)
                     ->where('invoice_id', $invoice->id)
-                    ->update(['invoice_id' => null]);   
+                    ->update(['invoice_id' => null]);  
+                     
                 // Eliminar de invoice_vehicles
                 $invVehicle->delete();
             }
