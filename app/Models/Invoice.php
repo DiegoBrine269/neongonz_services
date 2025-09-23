@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\InvoiceVehicle;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
@@ -27,5 +28,10 @@ class Invoice extends Model
         return $this->belongsToMany(Vehicle::class, 'invoice_vehicles', 'invoice_id', 'vehicle_id')
                     ->withPivot('project_id') // Incluye campos adicionales de la tabla pivote si es necesario
                     ->withTimestamps(); // Si la tabla pivote tiene timestamps
+    }
+
+    public function projectVehicles()
+    {
+        return $this->hasMany(ProjectVehicle::class, 'invoice_id');
     }
 }

@@ -15,6 +15,8 @@ class Vehicle extends Model
         'vehicle_type_id',
     ];
 
+    protected $hidden = ['pivot'];
+
     public function centre()
     {
         return $this->belongsTo(Centre::class);
@@ -32,9 +34,7 @@ class Vehicle extends Model
 
     public function project()
     {
-        return $this->belongsToMany(Project::class, 'project_vehicles', 'vehicle_id', 'project_id');
-            // ->withPivot(['commentary']);
-            // ->withTimestamps();
+        return $this->belongsTo(Project::class, 'project_id');
     }
 
     public function projects()

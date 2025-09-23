@@ -16,6 +16,8 @@ class VehiclesController extends Controller
     {
         $vehicles = [];
 
+        // dump($request->editing_invoice);
+
         if ($request->invoice == 'pending') {
             $vehicles = ProjectVehicle::with([
                 'vehicle:id,eco,vehicle_type_id', 
@@ -26,7 +28,19 @@ class VehiclesController extends Controller
                 }
             ])
             ->select('id', 'vehicle_id', 'project_id') 
-            ->where('has_invoice', 0)
+            ->when(
+                $request->editing_invoice,
+                fn($q) => $q->where(function ($sub) use ($request) {
+                    $sub->whereNull('invoice_id')
+                        ->orWhere('invoice_id', $request->editing_invoice);
+                }),
+                fn($q) => $q->whereNull('invoice_id')
+            )
+            ->when($request->has('centre_id'), function ($query) use ($request) {
+                $query->whereHas('project', function ($q) use ($request) {
+                    $q->where('centre_id', $request->centre_id);
+                });
+            })
             ->get()
             ->map(function ($projectVehicle) {
                 $service = $projectVehicle->project->service;

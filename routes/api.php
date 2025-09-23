@@ -25,7 +25,6 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 
 Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     
-    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
 
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class);
@@ -61,6 +60,10 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
 
 
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
+
+    Route::post('/invoices/send', [InvoicesController::class, 'send']);
+    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
+    Route::get('/invoices/email-pending', [InvoicesController::class, 'emailPending']);
 
     Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
 

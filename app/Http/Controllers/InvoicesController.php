@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Centre;
 use App\Models\Invoice;
+use App\Models\Project;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
 use App\Models\InvoiceVehicle;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Services\InvoiceService;
 
 class InvoicesController extends Controller
 {
@@ -103,184 +105,112 @@ class InvoicesController extends Controller
     {
 
         $invoices = Invoice::with('centre')
-        ->where('completed', false)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->where('completed', false)
+            ->orderBy('id', 'desc')
+            ->get();
 
 
         return $invoices;
+    }
+
+    public function emailPending()
+    {
+
+        $invoices = Invoice::with('centre')
+            ->whereNull('sent_at')
+            ->orderBy('id', 'desc')
+            ->get();
+
+
+        return $invoices;
+    }
+
+    public function send(Request $request)
+    {
+
+        // Si es un solo int, conviértelo a array
+        if (is_numeric($request->invoice_ids)) {
+            $request->merge(['invoice_ids' => [(int)$request->invoice_ids]]);
+        }
+
+        $fields = $request->validate([
+            'invoice_ids' => 'required|array|min:1',
+            'invoice_ids.*' => 'exists:invoices,id',
+        ], [
+            'invoice_ids.required' => 'Debes seleccionar al menos una cotización para enviar.',
+            'invoice_ids.array' => 'El formato de los IDs de las cotizaciones no es válido.',
+            'invoice_ids.min' => 'Debes seleccionar al menos una cotización para enviar.',
+            'invoice_ids.*.exists' => 'Una o más cotizaciones seleccionadas no existen.',
+        ]);
+
+        $invoices = Invoice::with('centre')
+            ->whereIn('id', $fields['invoice_ids'])
+            ->get();
+
+        $grouped = $invoices->groupBy('centre_id');
+
+        foreach ($grouped as $centreId => $invoicesGroup) {
+            $centre = $invoicesGroup->first()->centre;
+
+            $attachments = [];
+
+            foreach ($invoicesGroup as $invoice) {
+                $invoice->sent_at = Carbon::now();
+                $invoice->save();
+
+                $filename = $invoice->invoice_number . ".pdf";
+                $pdfContent = Storage::get("invoices/{$filename}");
+
+                $attachments[] = [
+                    'filename' => $filename,
+                    'content' => base64_encode($pdfContent),
+                    'contentType' => 'application/pdf',
+                ];
+            }
+
+            $html = view('email', [
+                'destinatario' => $centre->responsible
+            ])->render();
+
+            $responseEmail = $this->notify($centre->responsible_email, $html, $attachments);
+
+            // Si no se pudo enviar el correo, revertir la fecha de envío
+            if (!$responseEmail) {
+                foreach ($invoicesGroup as $invoice) {
+                    $invoice->sent_at = null;
+                    $invoice->save();
+                }
+                //Retornar mensaje de error si no se pudo enviar el correo
+                return response()->json(['error' => "No se pudo enviar el correo a {$centre->name}. Verifica que el correo electrónico esté configurado correctamente."], 500); 
+            }
+
+
+            usleep(600000);
+        }
+
+        // Retornar OK 200
+        return response()->json(['message' => 'Cotizaciones enviadas correctamente.']);
+        
     }
 
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
+    public function store(Request $request, InvoiceService $service)
+    {    
         $fields = $request->validate([
-            'vehicles' => [
-                'required',
-                'array',
-                'min:1',
-                function ($attribute, $value, $fail) {
-                    $serviceIds = collect($value)->pluck('project.service_id')->unique();
-                    $existing = DB::table('service_vehicle_type')
-                        ->whereIn('service_id', $serviceIds)
-                        ->pluck('service_id');
-                    $missing = $serviceIds->diff($existing);
-                    if ($missing->isNotEmpty()) {
-                        $fail('Faltan precios por registrar.');
-                    }
-                }
-            ],
-            'comments' => 'max:255'
-        ], [
-            'vehicles.required' => 'Debes seleccionar al menos un vehículo.',
-            'vehicles.array' => 'El campo vehicles debe ser un array.',
-            'vehicles.min' => 'Debes seleccionar al menos un vehículo.',
-            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'vehicles' => 'required|array|min:1',
+            'comments' => 'max:255',
         ]);
-    
-        $centre = Centre::find($fields['vehicles'][0]['centre_id']);
-    
-        $groupedByProject = collect($fields['vehicles'])->groupBy(function ($vehicle) {
-            return $vehicle['project']['id'];
-        })->map(function ($vehicles, $projectId) {
-            $service = $vehicles[0]['project']['service'];
-            $service_id = $vehicles[0]['project']['service_id'];
-    
-            $serviceVehicleTypes = DB::table('service_vehicle_type')
-                ->where('service_id', $service_id)
-                ->get()
-                ->keyBy('vehicle_type_id');
-    
-            $_vehicles = $vehicles->map(function ($vehicle) use ($serviceVehicleTypes) {
-                $vehicleTypeId = $vehicle['vehicle_type_id'];
-                $price = $serviceVehicleTypes->get($vehicleTypeId)->price ?? 0;
-                $vehicle['price'] = $price;
-                unset($vehicle['project']);
-                return (object)$vehicle;
-            });
-    
-            $vehiclesGroupedByPrice = $_vehicles->groupBy('price')->map(function ($group) {
-                return $group->groupBy('vehicle_type_id')->map(function ($_vehicles, $vehicleTypeId) {
-                    $type = VehicleType::find($vehicleTypeId)->type ?? 'Desconocido';
-                    return [
-                        'type' => $type,
-                        'group' => $_vehicles,
-                    ];
-                });
-            });
-    
-            return (object)[
-                'service' => $service,
-                'vehicles_grouped_by_price' => $vehiclesGroupedByPrice,
-                'service_vehicle_types' => $serviceVehicleTypes,
-            ];
-        });
 
-    
-        // Variables para usar fuera de la transacción
-        $invoice = null;
-        $invoice_number = null;
-    
-        // Transacción solo para guardar
-        DB::transaction(function () use (&$invoice, &$invoice_number, $centre, $fields, $groupedByProject) {
-            // Calculando el total de la cotización
-            $grandTotal = 0;
-            foreach ($groupedByProject as $project) {
-                foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price) {
-                    foreach ($grouped_by_price as $data) {
-                        $groupedVehicles = $data['group'];
-                        $totalForGroup = $groupedVehicles->sum('price');
-                        $grandTotal += $totalForGroup;
-                    }
-                }
-            }
+        [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields);
 
+        dump($filename);
 
-            $includedServices = $groupedByProject->pluck('service')->unique()->toArray();
-
-            $invoice = Invoice::create([
-                'centre_id' => $centre->id,
-                'date' => today(),
-                'comments' => $fields['comments'],
-                'total' => $grandTotal,
-                'services' => implode(", ", $includedServices)
-            ]);
-            
-    
-            foreach ($fields['vehicles'] as $vehicle) {
-                $invoice->invoiceVehicles()->create([
-                    'vehicle_id' => $vehicle['vehicle_id'],
-                    'project_id' => $vehicle['project']['id'],
-                ]);
-    
-                DB::table('project_vehicles')
-                    ->where('vehicle_id', $vehicle['vehicle_id'])
-                    ->where('project_id', $vehicle['project']['id'])
-                    ->update(['has_invoice' => true]);
-            }
-    
-            $today = today()->format('Ymd');
-            $invoice_number = "COT_$today" . "_" . $centre->id . "_" . $invoice->id;
-            $invoice->invoice_number = $invoice_number;
-            $invoice->save();
-        });
-
-
-  
-        $pdf = Pdf::loadView('invoice', [
-            'invoice_number' => $invoice_number,
-            'date' => Carbon::now()->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
-            'centre' => $centre,
-            'projects' => $groupedByProject,
-            'comments' => $fields['comments'],
-            'custom' => false
-        ]);
-        
-        $pdfContent = $pdf->output();
-        
-        // Nombre del archivo PDF
-        $filename = $invoice_number . '.pdf';
-
-
-
-        // Crear el directorio si no existe
-        if (!Storage::exists('invoices')) {
-            Storage::makeDirectory('invoices');
-        }
-
-        // Guardar en el bucket
-        Storage::put("invoices/$filename", $pdfContent);
-
-        $html = view('email', [
-            'destinatario' => $centre->responsible
-        ])->render();
-
-        // Resend::emails()->send([
-        //     'from' => 'Neon Gonz <servicios@neongonz.com>',
-        //     'to' => ['diegooloarte269@gmail.com'],
-        //     'cc' => ['neongonz@hotmail.com'],
-        //     'subject' => 'Solicitud de órdenes de compra',
-        //     'reply_to' => 'neongonz@hotmail.com',
-        //     'html' => $html,
-        //     'attachments' => [
-        //         [
-        //             'filename' => $filename,
-        //             'content' => base64_encode($pdfContent),
-        //             'contentType' => 'application/pdf',
-        //         ]
-        //     ],
-        // ]);
-
-        $invoice->path = $filename; 
-        $invoice->save();
-        
-        // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $invoice_number . '.pdf"')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
             ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
@@ -289,7 +219,7 @@ class InvoicesController extends Controller
         $fields = $request->validate([
             'invoice_id' => 'nullable|exists:invoices,id',
             'centre_id' => 'required|exists:centres,id',
-            'concept' => 'required|string|max:255',
+            'concept' => 'required|string',
             'quantity' => 'required|numeric|min:1',
             'price' => 'required|numeric|min:1',
             'comments' => 'nullable|string|max:255',
@@ -309,7 +239,6 @@ class InvoicesController extends Controller
             'quantity.min' => 'La cantidad debe ser al menos 1.',
             'price.min' => 'El precio debe ser al menos 1.',
             'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'concept.max' => 'El concepto debe ser menor a 255 caracteres.',
             'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
             'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
             'date.required' => 'La fecha es obligatoria.',
@@ -440,49 +369,46 @@ class InvoicesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id, InvoiceService $service)
     {
-        $invoice = Invoice::find($id);
-
-        if (!$invoice) {
-            return response()->json(['error' => 'Factura no encontrada.'], 404);
-        }
-
         $fields = $request->validate([
-            'total' => 'required|numeric|min:0',
-            'comments' => 'nullable|string|max:255',
-            'completed' => 'boolean',
-            'concept' => 'required|string|max:255',
-            'quantity' => 'required|numeric|min:1',
-            'price' => 'required|numeric|min:1',
-            'internal_commentary' => 'nullable|string|max:255',
+            'vehicles' => 'required|array|min:1',
             'date' => 'required|date|before_or_equal:today',
-
-        ], [
-
-            'total.required' => 'El total es obligatorio.', 
-            'total.numeric' => 'El total debe ser un número.',
-            'total.min' => 'El total debe ser al menos 0.',
-            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'concept.required' => 'El concepto es obligatorio.',
-            'concept.max' => 'El concepto debe ser menor a 255 caracteres.',
-            'quantity.required' => 'La cantidad es obligatoria.',
-            'quantity.numeric' => 'La cantidad debe ser un número.',
-            'quantity.min' => 'La cantidad debe ser al menos 1.',
-            'price.required' => 'El precio es obligatorio.',
-            'price.numeric' => 'El precio debe ser un número.',
-            'price.min' => 'El precio debe ser al menos 1.',
-            'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
-            'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'date.required' => 'La fecha es obligatoria.',
-            'date.date' => 'La fecha no es válida.',
-            'date.before_or_equal' => 'La fecha no puede ser futura.',
+            'comments' => 'max:255',
         ]);
 
+        $invoice = Invoice::findOrFail($id);
 
-        $invoice->update($fields);
+        [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields, $invoice);
+        // dump($filename);
 
-        return response()->json(['message' => 'Factura actualizada correctamente.', 'invoice' => $invoice]);
+        //Eliminando el resto de vehículos
+        $invoiceVehicles = InvoiceVehicle::where('invoice_id', $invoice->id)->get();
+
+        //Detach vehicles no seleccionados
+        $selectedVehicleIds = collect($fields['vehicles'])->pluck('vehicle_id')->toArray();
+
+
+
+        foreach ($invoiceVehicles as $invVehicle) {
+            // dump($invVehicle->vehicle_id);
+            if (!in_array($invVehicle->vehicle_id, $selectedVehicleIds)) {
+                
+                ProjectVehicle::where('vehicle_id', $invVehicle->vehicle_id)
+                    ->where('invoice_id', $invoice->id)
+                    ->update(['invoice_id' => null]);   
+                // Eliminar de invoice_vehicles
+                $invVehicle->delete();
+            }
+        }
+
+        $invoice->date = $fields['date'];
+
+
+        return response($pdfContent, 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
     /**
@@ -490,12 +416,60 @@ class InvoicesController extends Controller
      */
     public function show(string $id)
     {
-        $invoice = Invoice::with(['centre', 'vehicles:id,eco'])->find($id);
+        $invoice = Invoice::with([
+            'centre',
+            'projectVehicles' => function ($query) {
+                $query->with([
+                    'vehicle:id,eco,vehicle_type_id', 
+                    'vehicle.type:id,type',
+                    'project',
+                    'project.service'=> function ($query) {
+                        return $query->with('vehicleTypes')->get();
+                    }
+
+
+                ]);
+            },
+        ])->find($id);
+
 
         if (!$invoice) {
             return response()->json(['error' => 'Factura no encontrada.'], 404);
         }
 
+
+        // Asignar el proyecto correcto a cada vehículo
+        $vehicles = $invoice->projectVehicles->map(function ($pv) {
+            $v = $pv->vehicle;
+            $p = $pv->project;
+
+            // dump($v);
+            $filteredType = $p->service->vehicleTypes->firstWhere('id', $v->type->id);
+
+            return [
+                    'id' => $pv->id,
+                    'vehicle_id' => $v->id ?? null,
+                    'eco' => $v->eco ?? null,
+                    'centre_id' => $p->centre->id,
+                    'vehicle_type_id' => $v->vehicle_type_id ?? null,
+                    'type' => $v->type->type ?? null,
+                    'project_id' => $pv->project_id,
+                    'project' => $p ? [
+                        'id' => $p->id,
+                        'service' => $p->service->name ?? null, // <-- solo el string
+                        'service_id' => $p->service_id,
+                        'centre_id' => $p->centre_id,
+                        'date' => $p->date,
+                    ] : null,
+                    'price' => $filteredType?->pivot?->price ,
+
+                ];
+            
+        });
+
+        $invoice->vehicles = $vehicles;
+        unset($invoice->projectVehicles);
+        
         return $invoice;
     }
 
@@ -517,7 +491,7 @@ class InvoicesController extends Controller
             ProjectVehicle::
                 where('vehicle_id', $vehicle->id)
                 ->where('project_id', $vehicle->pivot->project_id) // Usar el project_id de la tabla pivote
-                ->update(['has_invoice' => false]);
+                ->update(['invoice_id' => null]);
         }
 
         InvoiceVehicle::where('invoice_id', $invoice->id)->delete();
@@ -529,5 +503,25 @@ class InvoicesController extends Controller
         $invoice->delete();
 
         return response()->json(['message' => 'Cotización eliminada y vehículos actualizados correctamente.']);
+    }
+
+    public function notify($email, $html, $attachments){
+
+        if(!$email) {
+            return false;
+        }
+
+        Resend::emails()->send([
+            'from' => 'Neon Gonz <servicios@neongonz.com>',
+            'to' => [$email],
+            'cc' => ['neongonz@hotmail.com'],
+            'subject' => 'Solicitud de órdenes de compra',
+            'reply_to' => 'neongonz@hotmail.com',
+            'html' => $html,
+            'attachments' => $attachments,
+        ]);
+
+        return true;
+            
     }
 }

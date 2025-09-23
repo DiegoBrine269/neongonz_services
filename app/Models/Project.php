@@ -20,6 +20,8 @@ class Project extends Model
         'commentary'
     ];
 
+    
+
     protected $casts = [
         // 'date' => 'date:d/m/Y',
         'related_projects' => 'array',

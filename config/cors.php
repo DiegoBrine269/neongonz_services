@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173', 'https://neongonz-services.netlify.app', 'http://192.168.0.2:5173'],
+
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', '*')),
+    // 'allowed_origins' => ['*'],
+
+    // 'allowed_origins' => ['http://localhost:5173', 'https://neongonz-services.netlify.app', 'http://192.168.0.2:5173', 'http://100.102.73.38:5173/'],
 
     'allowed_origins_patterns' => [],
 

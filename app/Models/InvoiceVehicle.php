@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class InvoiceVehicle extends Model
+class InvoiceVehicle extends Pivot
 {
+    protected $table = 'invoice_vehicles';
+
     protected $fillable = ['vehicle_id', 'project_id', 'commentary'];
 
     public function invoice()
@@ -16,5 +18,15 @@ class InvoiceVehicle extends Model
     public function vehicles()
     {
         return $this->hasMany(Vehicle::class);
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 }
