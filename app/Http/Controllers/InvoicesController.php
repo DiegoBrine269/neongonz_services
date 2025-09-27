@@ -268,6 +268,7 @@ class InvoicesController extends Controller
             'internal_commentary' => 'nullable|string|max:255',
             'date' => 'required|date|before_or_equal:today',
             'is_budget' => 'boolean',
+            'responsible_id' => 'required|exists:responsibles,id',
             
         ], [
             'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
@@ -287,6 +288,8 @@ class InvoicesController extends Controller
             'date.date' => 'La fecha no es válida.',
             'date.before_or_equal' => 'La fecha no puede ser futura.',
             'is_budget.boolean' => 'El campo tipo debe ser verdadero o falso.',
+            'responsible_id.exists' => 'El responsable seleccionado no existe.',
+            'responsible_id.required' => 'El responsable es obligatorio.',
         ]);
     
 
@@ -317,6 +320,7 @@ class InvoicesController extends Controller
                 'services' => $fields['concept'] ?? null,
                 'internal_commentary' => $fields['internal_commentary'] ?? null,
                 'is_budget' => $fields['is_budget'] ,
+                'responsible_id' => $fields['responsible_id']
             ]);
         }
 
@@ -325,6 +329,7 @@ class InvoicesController extends Controller
         $invoice->save();        
         
         $centre = Centre::with('responsibles')->find($fields['centre_id']);
+        $centre->responsible = $centre->responsibles()->find($fields['responsible_id']);
         
         // dump($fields['completed']);
 

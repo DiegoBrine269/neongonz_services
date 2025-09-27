@@ -76,7 +76,14 @@ class CentresController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $centre = Centre::with('responsibles')->find($id);
+
+        if (!$centre) {
+            return response()->json(['message' => 'Centro de ventas no encontrado.'], 404);
+        }
+
+
+        return $centre;
     }
 
 
@@ -85,7 +92,35 @@ class CentresController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $centre = Centre::find($id);
+
+        if (!$centre) {
+            return response()->json(['message' => 'Centro de ventas no encontrado.'], 404);
+        }
+
+        $fields = $request->validate([
+            'name' =>'required|max:255|unique:centres,name,'.$id,
+            'location' => 'nullable|max:255',
+            'responsibles' =>'required|array|exists:responsibles,id',
+        ],[
+
+            'name.required' => 'El nombre del centro de ventas es obligatorio.',
+            'name.max' => 'El nombre debe ser menor a 255 caracteres.',
+            'name.unique' => "El centro de ventas $request->name ya existe.", 
+            'location.max' => 'La ubicación debe ser menor a 255 caracteres.',
+            'responsibles.required' => 'Debe seleccionar al menos un responsable.',
+            'responsibles.array' => 'El formato de los responsables no es válido.',
+        ]);
+
+        $centre->name = $fields['name'];
+        $centre->location = $request->location;
+        $centre->responsibles()->sync($fields['responsibles']);
+        $centre->save();
+
+        return response()->json([
+            'message' => 'Centro de ventas actualizado correctamente.',
+            'centre' => $centre,
+        ], 200);
     }
 
     /**

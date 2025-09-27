@@ -16,7 +16,10 @@ class InvoiceService
     {
 
         $centre = Centre::find($fields['vehicles'][0]['centre_id']);
-        $centre->responsible = $centre->responsibles()->find($fields['responsible_id']) ?? null;
+
+        $responsible_id = $fields['responsible_id'] ?? $invoice->responsible_id ?? $centre->responsibles()->first()?->id ?? null;
+        
+        $centre->responsible = $centre->responsibles()->find($responsible_id);
         $date = $fields['date'] ?? today();
 
         // 1. Agrupar por proyecto y calcular totales
@@ -58,7 +61,7 @@ class InvoiceService
 
         // 2. Guardar en BD dentro de transacción
         $invoice_number = null;
-        DB::transaction(function () use (&$invoice, &$invoice_number, $centre, $fields, $groupedByProject, $date) {
+        DB::transaction(function () use (&$invoice, &$invoice_number, $centre, $fields, $groupedByProject, $date, $responsible_id) {
             if (!$invoice) {
                 $invoice = new Invoice();
             }
@@ -81,7 +84,7 @@ class InvoiceService
                 'comments' => $fields['comments'] ?? null,
                 'total' => $grandTotal,
                 'services' => implode(", ", $includedServices),
-                'responsible_id' => $fields['responsible_id']
+                'responsible_id' => $responsible_id,
             ]);
             $invoice->save();
 
