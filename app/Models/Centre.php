@@ -25,4 +25,9 @@ class Centre extends Model
         return $this->belongsToMany(Service::class, 'services_centres')
             ->withTimestamps();
     }
+
+    public function responsibles()
+    {
+        return $this->belongsToMany(Responsible::class, 'centre_responsible');
+    }
 }

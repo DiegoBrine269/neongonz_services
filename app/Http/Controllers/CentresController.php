@@ -15,7 +15,7 @@ class CentresController extends Controller
     public function index(Request $request)
     {
 
-        $centres = Centre::orderBy('name', 'asc')->get();
+        $centres = Centre::with('responsibles')->orderBy('name', 'asc')->get();
         
         $centres->makeHidden(['created_at', 'updated_at']);
 

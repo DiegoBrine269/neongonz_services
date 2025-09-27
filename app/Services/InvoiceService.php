@@ -16,6 +16,7 @@ class InvoiceService
     {
 
         $centre = Centre::find($fields['vehicles'][0]['centre_id']);
+        $centre->responsible = $centre->responsibles()->find($fields['responsible_id']) ?? null;
         $date = $fields['date'] ?? today();
 
         // 1. Agrupar por proyecto y calcular totales
@@ -80,6 +81,7 @@ class InvoiceService
                 'comments' => $fields['comments'] ?? null,
                 'total' => $grandTotal,
                 'services' => implode(", ", $includedServices),
+                'responsible_id' => $fields['responsible_id']
             ]);
             $invoice->save();
 
@@ -97,10 +99,10 @@ class InvoiceService
                     ->update(['invoice_id' => $invoice->id]);
             }
 
-            $today = today()->format('Ymd');
-            $invoice_number = "COT_$today" . "_" . $centre->id . "_" . $invoice->id;
+            // $today = today()->format('Ymd');
+            $invoice_number = "COT_" . $invoice->id;
             $invoice->invoice_number = $invoice_number;
-            $invoice->save();
+            // dump($invoice->save());
         });
 
         // 3. Generar PDF

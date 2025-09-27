@@ -10,6 +10,8 @@ use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
+use App\Http\Controllers\ResponsiblesController;
+
 use App\Http\Controllers\Auth\PasswordResetController;
 
 
@@ -22,14 +24,41 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
+// USUARIOS ADMIN
+Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
+    Route::apiResource('responsibles', ResponsiblesController::class);
 
-Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     
+    Route::get('/users/{id}/performance', [UserController::class, 'performance']);
+
+
+
+    Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
+
+    Route::delete('/invoices', [InvoicesController::class, 'destroyMultiple']);
+    Route::post('/invoices/send', [InvoicesController::class, 'send']);
+    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
+    Route::get('/invoices/email-pending', [InvoicesController::class, 'emailPending']);
+
+    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
+
+
+    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
+    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
 
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class);
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
+});
+
+// USUARIOS ACTIVOS (NO ADMIN)
+Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
+    Route::apiResource('centres', CentresController::class)->only('index');
+    Route::apiResource('vehicles', VehiclesController::class)->only('index');
+    Route::apiResource('services', ServicesController::class)->only('index');
+    Route::apiResource('projects', ProjectsController::class)->except(['destroy', 'toggleStatus']);
 
 
     //Extras de vehículos
@@ -51,25 +80,3 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
 // Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
 // Route::post('/reset-password', [PasswordResetController::class, 'reset']);
-
-Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
-    Route::get('/users', [UserController::class, 'index']);
-    
-    Route::get('/users/{id}/performance', [UserController::class, 'performance']);
-
-
-
-    Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
-
-    Route::post('/invoices/send', [InvoicesController::class, 'send']);
-    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
-    Route::get('/invoices/email-pending', [InvoicesController::class, 'emailPending']);
-
-    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
-
-
-    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
-    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
-});
-
-

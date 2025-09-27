@@ -5,17 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Centre;
 use App\Models\Invoice;
 use App\Models\Project;
+use App\Models\Responsible;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
 use App\Models\InvoiceVehicle;
 use App\Models\ProjectVehicle;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\InvoiceService;
 use Illuminate\Support\Facades\DB;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use App\Services\InvoiceService;
 
 class InvoicesController extends Controller
 {
@@ -143,16 +144,28 @@ class InvoicesController extends Controller
             'invoice_ids.*.exists' => 'Una o más cotizaciones seleccionadas no existen.',
         ]);
 
+        // Obtener los invoices
+        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->pluck('is_budget');
+
+        // Validar que todos los valores de is_budget sean iguales, NO SE PUEDEN ENVIAR COTIZACIONES Y PRESUPUESTOS JUNTOS
+        if ($invoices->unique()->count() > 1) {
+            return response()->json([
+                'error' => 'No puedes enviar cotizaciones y presupuestos juntos. Selecciona solo un tipo.'
+            ], 422);
+        }
+
         $invoices = Invoice::with('centre')
             ->whereIn('id', $fields['invoice_ids'])
             ->get();
 
-        $grouped = $invoices->groupBy('centre_id');
+        $grouped = $invoices->groupBy('responsible_id');
 
         foreach ($grouped as $centreId => $invoicesGroup) {
             $centre = $invoicesGroup->first()->centre;
 
             $attachments = [];
+
+            $responsiblePerson = null;
 
             foreach ($invoicesGroup as $invoice) {
                 $invoice->sent_at = Carbon::now();
@@ -166,13 +179,23 @@ class InvoicesController extends Controller
                     'content' => base64_encode($pdfContent),
                     'contentType' => 'application/pdf',
                 ];
+
+                $responsiblePerson = Responsible::find($invoice->responsible_id);
             }
 
-            $html = view('email', [
-                'destinatario' => $centre->responsible
-            ])->render();
 
-            $responseEmail = $this->notify($centre->responsible_email, $html, $attachments);
+            $type = $invoicesGroup->first()->is_budget ? 'PRE' : 'COT';
+
+            $html = view('email', [
+                'destinatario' => $responsiblePerson->name,
+                'type' => $type
+            ])->render();
+        
+    
+            $subject = ($invoicesGroup->first()->is_budget ? 'Presupuestos' : 'Solicitud de órdenes de compra') . " - {$centre->name}";
+
+
+            $responseEmail = $this->notify($responsiblePerson->email, $html, $attachments, $subject);
 
             // Si no se pudo enviar el correo, revertir la fecha de envío
             if (!$responseEmail) {
@@ -202,11 +225,29 @@ class InvoicesController extends Controller
         $fields = $request->validate([
             'vehicles' => 'required|array|min:1',
             'comments' => 'max:255',
+            'responsible_id' => 'required|exists:responsibles,id',
+        ],[
+            'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
+            'vehicles.array' => 'El formato de los vehículos no es válido.',
+            'vehicles.min' => 'Debes seleccionar al menos un vehículo para la cotización.',
+            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
+            'responsible_id.required' => 'El responsable es obligatorio.',
+            'responsible_id.exists' => 'El responsable seleccionado no existe.',
         ]);
+        
+        $projectVehicleIds = collect($fields['vehicles'])->pluck('id')->toArray();
+
+        $alreadyAssigned = ProjectVehicle::whereIn('id', $projectVehicleIds)
+            ->whereNotNull('invoice_id')
+            ->exists();
+
+        if ($alreadyAssigned) {
+            return response()->json([
+                'error' => 'Uno o más vehículos ya están asignados a una cotización.'
+            ], 422);
+        }
 
         [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields);
-
-        dump($filename);
 
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
@@ -226,6 +267,7 @@ class InvoicesController extends Controller
             'completed' => 'boolean',
             'internal_commentary' => 'nullable|string|max:255',
             'date' => 'required|date|before_or_equal:today',
+            'is_budget' => 'boolean',
             
         ], [
             'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
@@ -244,6 +286,7 @@ class InvoicesController extends Controller
             'date.required' => 'La fecha es obligatoria.',
             'date.date' => 'La fecha no es válida.',
             'date.before_or_equal' => 'La fecha no puede ser futura.',
+            'is_budget.boolean' => 'El campo tipo debe ser verdadero o falso.',
         ]);
     
 
@@ -260,6 +303,8 @@ class InvoicesController extends Controller
             
             // dump($invoice);
         }else {
+
+            // dump($fields);
             $invoice = Invoice::create([
                 'centre_id' => $fields['centre_id'],
                 'date' => $fields['date'],
@@ -271,18 +316,15 @@ class InvoicesController extends Controller
                 'price' => $fields['price'],
                 'services' => $fields['concept'] ?? null,
                 'internal_commentary' => $fields['internal_commentary'] ?? null,
+                'is_budget' => $fields['is_budget'] ,
             ]);
         }
 
-        
-        
-        $today = today()->format('Ymd');
-        $invoice_number = "COT_$today" . "_" . $fields['centre_id'] . "_" . $invoice->id;
+        $invoice_number = "COT_" . $invoice->id;
         $invoice->invoice_number = $invoice_number;
-        $invoice->save();
+        $invoice->save();        
         
-        
-        $centre = Centre::find($fields['centre_id']);
+        $centre = Centre::with('responsibles')->find($fields['centre_id']);
         
         // dump($fields['completed']);
 
@@ -292,8 +334,6 @@ class InvoicesController extends Controller
                 'message' => 'Factura creada como borrador.',
                 'invoice_number' => $invoice_number,
                 'invoice_id' => $invoice->id,
-
-
             ], 201);
         }
 
@@ -330,9 +370,6 @@ class InvoicesController extends Controller
         $invoice->path = $filename; 
         $invoice->save();
 
-
-
-        // Enviando factura por correo
         
         // Devolver la respuesta (opcional, si también quieres mostrarlo al usuario)
         return response($pdfContent, 200)
@@ -506,17 +543,48 @@ class InvoicesController extends Controller
         return response()->json(['message' => 'Cotización eliminada y vehículos actualizados correctamente.']);
     }
 
-    public function notify($email, $html, $attachments){
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids'); // array de IDs
+
+        foreach ($ids as $id) {
+            $invoice = Invoice::find($id);
+
+            if ($invoice) {
+                $vehicles = $invoice->vehicles;
+
+                foreach ($vehicles as $vehicle) {
+                    ProjectVehicle::
+                        where('vehicle_id', $vehicle->id)
+                        ->where('project_id', $vehicle->pivot->project_id) // Usar el project_id de la tabla pivote
+                        ->update(['invoice_id' => null]);
+                }
+
+                InvoiceVehicle::where('invoice_id', $invoice->id)->delete();
+
+                if ($invoice->path)
+                    Storage::delete("invoices/".$invoice->path); 
+
+                $invoice->delete();
+            }
+        }
+
+        Invoice::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Cotizaciones eliminadas correctamente']);
+    }
+
+    public function notify($email, $html, $attachments, $subject = 'Solicitud de órdenes de compra'){
 
         if(!$email) {
             return false;
         }
 
         Resend::emails()->send([
-            'from' => 'Neon Gonz <servicios@neongonz.com>',
+            'from' => 'Neón Gonz <servicios@neongonz.com>',
             'to' => [$email],
             'cc' => ['neongonz@hotmail.com'],
-            'subject' => 'Solicitud de órdenes de compra',
+            'subject' => "CORREO DE PRUEBA $subject",
             'reply_to' => 'neongonz@hotmail.com',
             'html' => $html,
             'attachments' => $attachments,
