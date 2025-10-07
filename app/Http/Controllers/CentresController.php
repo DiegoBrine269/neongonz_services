@@ -32,19 +32,24 @@ class CentresController extends Controller
     {
         $fields = $request->validate([
             'name' =>'required|max:255|unique:centres',
-            'responsible' =>'required',
+            'responsible_id' =>'required|exists:responsibles,id',
+            'location' => 'nullable|max:255',
         ],[
             'name.required' => 'El nombre del centro de ventas es obligatorio.',
             'name.max' => 'El nombre debe ser menor a 255 caracteres.',
             'name.unique' => "El centro de ventas $request->name ya existe.", 
-            'responsible.required' => 'El responsable es obligatorio.',
+            'responsible_id.required' => 'El responsable es obligatorio.',
+            'responsible_id.exists' => 'El responsable seleccionado no es válido.',
+            'location.max' => 'La ubicación debe ser menor a 255 caracteres.',
         ]);
 
         $centre = Centre::create([
             'name' => $fields['name'],
             'location' => $request->location,
-            'responsible' => $fields['responsible'],
         ]);
+
+        $centre->responsibles()->attach($fields['responsible_id']);
+        
 
         return response()->json([
             'message' => 'Centro de ventas creado correctamente.',
