@@ -589,7 +589,7 @@ class InvoicesController extends Controller
             'from' => 'Neón Gonz <servicios@neongonz.com>',
             'to' => [$email],
             'cc' => ['neongonz@hotmail.com'],
-            'subject' => "CORREO DE PRUEBA $subject",
+            'subject' => $subject,
             'reply_to' => 'neongonz@hotmail.com',
             'html' => $html,
             'attachments' => $attachments,

@@ -230,6 +230,7 @@ class ProjectsController extends Controller
                     }
                 },
             ]);
+            $vehicle->vehicle_type_id = $fields['type'];
             $vehicle->save();
         }
 
