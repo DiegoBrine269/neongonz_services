@@ -17,7 +17,9 @@ class InvoiceService
 
         $centre = Centre::find($fields['vehicles'][0]['centre_id']);
 
-        $responsible_id = $fields['responsible_id'] ?? $invoice->responsible_id ?? $centre->responsibles()->first()?->id ?? null;
+        $responsible_id = (int)$fields['responsible_id'] ?? $invoice->responsible_id ?? $centre->responsibles()->first()?->id ?? null;
+
+        
         
         $centre->responsible = $centre->responsibles()->find($responsible_id);
         $date = $fields['date'] ?? today();

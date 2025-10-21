@@ -236,7 +236,7 @@ class InvoicesController extends Controller
         ]);
         
         $projectVehicleIds = collect($fields['vehicles'])->pluck('id')->toArray();
-
+ 
         $alreadyAssigned = ProjectVehicle::whereIn('id', $projectVehicleIds)
             ->whereNotNull('invoice_id')
             ->exists();
