@@ -70,7 +70,14 @@ class AuthController extends Controller
     }
 
     public function logout(Request $request){
-        $request->user()->tokens()->delete();
+        $current = $request->user()->currentAccessToken();
+        if ($current) {
+            $current->delete();
+        }
+
+        return [
+            'message' => 'Has cerrado sesión correctamente.',
+        ];
 
         return [
             'message' => 'Has cerrado sesión correctamente.',
