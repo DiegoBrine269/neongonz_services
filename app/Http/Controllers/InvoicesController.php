@@ -397,13 +397,19 @@ class InvoicesController extends Controller
             return response()->json(['error' => 'Archivo no encontrado.'], 404);
         }
 
+        $url = Storage::temporaryUrl(
+            $path, now()->addMinutes(5)
+        );
+
+        return response()->json(['url' => $url], 200);
+
         // Obtener el contenido del archivo
-        $fileContent = Storage::get($path);
+        // $fileContent = Storage::get($path);
 
         // Devolver el archivo como respuesta
-        return response($fileContent, 200)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="' . basename($path) . '"');
+        // return response($fileContent, 200)
+        //     ->header('Content-Type', 'application/pdf')
+        //     ->header('Content-Disposition', 'inline; filename="' . basename($path) . '"');
     }
     
 
