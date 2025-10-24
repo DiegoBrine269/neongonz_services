@@ -416,8 +416,21 @@ class InvoicesController extends Controller
         $fields = $request->validate([
             'vehicles' => 'required|array|min:1',
             'date' => 'required|date|before_or_equal:today',
+            'responsible_id' => 'required|exists:responsibles,id',
             'comments' => 'max:255',
-        ]);
+        ],
+        [
+            'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
+            'vehicles.array' => 'El formato de los vehículos no es válido.',
+            'vehicles.min' => 'Debes seleccionar al menos un vehículo para la cotización.',
+            'date.required' => 'La fecha es obligatoria.',
+            'date.date' => 'La fecha no es válida.',
+            'date.before_or_equal' => 'La fecha no puede ser futura.',
+            'responsible_id.required' => 'El responsable es obligatorio.',
+            'responsible_id.exists' => 'El responsable seleccionado no existe.',
+            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
+        ]
+        );
 
         $invoice = Invoice::findOrFail($id);
 
