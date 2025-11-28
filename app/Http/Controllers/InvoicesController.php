@@ -117,8 +117,10 @@ class InvoicesController extends Controller
     public function emailPending()
     {
 
+        // TODO: Agregar where completed = true
         $invoices = Invoice::with('centre')
             ->whereNull('sent_at')
+            
             ->orderBy('id', 'desc')
             ->get();
 

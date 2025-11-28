@@ -1,0 +1,2 @@
+# Ejecuta el scheduler cada minuto
+* * * * * cd /var/www/html && php artisan schedule:run >> /dev/stdout 2>&1

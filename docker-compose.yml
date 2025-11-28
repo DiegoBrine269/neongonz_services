@@ -1,0 +1,85 @@
+version: "3.9"
+
+
+services:
+app: # PHP-FPM + Composer + extensiones necesarias
+build:
+context: .
+dockerfile: docker/php/Dockerfile
+container_name: laravel_app
+restart: unless-stopped
+volumes:
+- ./:/var/www/html
+env_file:
+- .env
+depends_on:
+- pg
+- redis
+
+
+web: # Nginx
+image: nginx:1.27-alpine
+container_name: laravel_web
+restart: unless-stopped
+ports:
+- "80:80"
+volumes:
+- ./:/var/www/html:ro
+- ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+depends_on:
+- app
+
+
+pg: # PostgreSQL 16
+image: postgres:16-alpine
+container_name: laravel_pg
+restart: unless-stopped
+environment:
+POSTGRES_DB: ${DB_DATABASE:-laravel}
+POSTGRES_USER: ${DB_USERNAME:-laravel}
+POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+volumes:
+- pg_data:/var/lib/postgresql/data
+ports:
+- "5432:5432"
+
+
+redis:
+image: redis:7-alpine
+container_name: laravel_redis
+restart: unless-stopped
+
+
+queue: # worker de colas (Horizon u queue:work)
+build:
+context: .
+dockerfile: docker/php/Dockerfile
+container_name: laravel_queue
+command: php artisan queue:work --sleep=1 --tries=3 --max-time=3600
+volumes:
+- ./:/var/www/html
+env_file:
+- .env
+depends_on:
+- app
+- redis
+- pg
+
+
+scheduler: # cron del scheduler de Laravel
+build:
+context: .
+dockerfile: docker/php/Dockerfile
+container_name: laravel_scheduler
+command: crond -f
+volumes:
+- ./:/var/www/html
+- ./docker/cron/crontab:/etc/crontabs/root:ro
+env_file:
+- .env
+depends_on:
+- app
+
+
+volumes:
+pg_data:
