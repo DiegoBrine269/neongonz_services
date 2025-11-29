@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Correo Servicios Neon Gonz</title>
+    <title>Correo Servicios Neón Gonz</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -68,7 +68,7 @@
 
         <div class="signature">
             <p>Atentamente,</p>
-            <p class="brand">Servicios Neon Gonz</p>
+            <p class="brand">Neón Gonz</p>
             <p class="contact-info">📞 55 3026 3958 (Jazmín Jasso)</p>
         </div>
     </div>

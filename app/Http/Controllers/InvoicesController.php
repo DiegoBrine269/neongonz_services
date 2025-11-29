@@ -117,10 +117,9 @@ class InvoicesController extends Controller
     public function emailPending()
     {
 
-        // TODO: Agregar where completed = true
         $invoices = Invoice::with('centre')
             ->whereNull('sent_at')
-            
+            ->where('completed', true)
             ->orderBy('id', 'desc')
             ->get();
 
@@ -422,9 +421,12 @@ class InvoicesController extends Controller
     public function update(Request $request, string $id, InvoiceService $service)
     {
         $fields = $request->validate([
-            'vehicles' => 'required|array|min:1',
+            'vehicles' => 'required_unless:completed,false|array|min:1',
             'date' => 'required|date|before_or_equal:today',
             'responsible_id' => 'required|exists:responsibles,id',
+            'quantity' => 'sometimes|numeric|min:1',
+            'price' => 'sometimes|numeric|min:1',
+            'concept' => 'sometimes|string',
             'comments' => 'max:255',
         ],
         [
@@ -442,37 +444,40 @@ class InvoicesController extends Controller
 
         $invoice = Invoice::findOrFail($id);
 
-        [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields, $invoice);
-        // dump($filename);
 
-        //Eliminando el resto de vehículos
-        $invoiceVehicles = InvoiceVehicle::where('invoice_id', $invoice->id)->get();
-
-        //Detach vehicles no seleccionados
-        $selectedVehicleIds = collect($fields['vehicles'])->pluck('vehicle_id')->toArray();
-
-
-
-        foreach ($invoiceVehicles as $invVehicle) {
-            // dump($invVehicle->vehicle_id);
-            if (!in_array($invVehicle->vehicle_id, $selectedVehicleIds)) {
-                
-                ProjectVehicle::where('vehicle_id', $invVehicle->vehicle_id)
-                    ->where('invoice_id', $invoice->id)
-                    ->update(['invoice_id' => null]);  
-                     
-                // Eliminar de invoice_vehicles
-                $invVehicle->delete();
+        
+        if(!empty($fields['vehicles'])){
+            
+            [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields, $invoice);
+            //Eliminando el resto de vehículos
+            $invoiceVehicles = InvoiceVehicle::where('invoice_id', $invoice->id)->get();
+    
+            //Detach vehicles no seleccionados
+            $selectedVehicleIds = collect($fields['vehicles'])->pluck('vehicle_id')->toArray();
+    
+    
+    
+            foreach ($invoiceVehicles as $invVehicle) {
+                // dump($invVehicle->vehicle_id);
+                if (!in_array($invVehicle->vehicle_id, $selectedVehicleIds)) {
+                    
+                    ProjectVehicle::where('vehicle_id', $invVehicle->vehicle_id)
+                        ->where('invoice_id', $invoice->id)
+                        ->update(['invoice_id' => null]);  
+                         
+                    // Eliminar de invoice_vehicles
+                    $invVehicle->delete();
+                }
             }
+            return response($pdfContent, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+                ->header('Access-Control-Expose-Headers', 'Content-Disposition');
         }
 
-        $invoice->date = $fields['date'];
+        $invoice->update($fields);
+        return response()->json(['message' => 'Factura actualizada correctamente.']);
 
-
-        return response($pdfContent, 200)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
     /**

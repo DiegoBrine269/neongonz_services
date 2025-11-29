@@ -117,7 +117,7 @@
                 
                 <td>
                     <div class="header-text">
-                        <p class="nombre bold">Neon Gonz</p>
+                        <p class="nombre bold">Neón Gonz</p>
                     </div>
                     
                     <div style="text-align: center; font-size: 11px">
