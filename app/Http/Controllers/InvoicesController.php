@@ -105,7 +105,7 @@ class InvoicesController extends Controller
     public function pending()
     {
 
-        $invoices = Invoice::with('centre')
+        $invoices = Invoice::with('centre', 'rows')
             ->where('completed', false)
             ->orderBy('id', 'desc')
             ->get();
@@ -261,9 +261,13 @@ class InvoicesController extends Controller
         $fields = $request->validate([
             'invoice_id' => 'nullable|exists:invoices,id',
             'centre_id' => 'required|exists:centres,id',
-            'concept' => 'required|string',
-            'quantity' => 'required|numeric|min:1',
-            'price' => 'required|numeric|min:1',
+            // 'concept' => 'required|string',
+            // 'quantity' => 'required|numeric|min:1',
+            // 'price' => 'required|numeric|min:1',
+            'rows' => 'required|array|min:1',
+            'rows.*.concept' => 'required|string',
+            'rows.*.quantity' => 'required|numeric|min:1',
+            'rows.*.price' => 'required|numeric|min:1',
             'comments' => 'nullable|string|max:255',
             'completed' => 'boolean',
             'internal_commentary' => 'nullable|string|max:255',
@@ -275,9 +279,15 @@ class InvoicesController extends Controller
             'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
             'centre_id.required' => 'El centro es obligatorio.',
             'centre_id.exists' => 'El centro seleccionado no existe.',
-            'concept.required' => 'El concepto es obligatorio.',
-            'quantity.required' => 'La cantidad es obligatoria.',
-            'price.required' => 'El precio es obligatorio.',
+            // 'concept.required' => 'El concepto es obligatorio.',
+            // 'quantity.required' => 'La cantidad es obligatoria.',
+            // 'price.required' => 'El precio es obligatorio.',
+            'rows.required' => 'Debes agregar al menos una fila a la cotización.',
+            'rows.array' => 'El formato de las filas no es válido.',
+            'rows.min' => 'Debes agregar al menos una fila a la cotización.',
+            'rows.*.concept.required' => 'El concepto es obligatorio en todas las filas.',
+            'rows.*.quantity.required' => 'La cantidad es obligatoria en todas las filas.',
+            'rows.*.price.required' => 'El precio es obligatorio en todas las filas.',
             'quantity.numeric' => 'La cantidad debe ser un número.',
             'price.numeric' => 'El precio debe ser un número.',
             'quantity.min' => 'La cantidad debe ser al menos 1.',
@@ -301,34 +311,38 @@ class InvoicesController extends Controller
     
         
 
-        if($fields['invoice_id']){
-            $invoice = Invoice::find($fields['invoice_id']);
-            $invoice->update($fields);
-            
-            // dump($invoice);
-        }else {
+        $rows = collect($fields['rows']);
+        $total = $rows->sum(fn ($item) => $item['quantity'] * $item['price']);
+        $services = $rows->pluck('concept')->implode(', ');
 
-            // dump($fields);
-            $invoice = Invoice::create([
-                'centre_id' => $fields['centre_id'],
-                'date' => $fields['date'],
-                'comments' => $fields['comments'] ?? null,
-                'total' => $fields['quantity'] * $fields['price'],
-                'completed' => $fields['completed'] , 
-                'concept' => $fields['concept'],
-                'quantity' => $fields['quantity'],
-                'price' => $fields['price'],
-                'services' => $fields['concept'] ?? null,
-                'internal_commentary' => $fields['internal_commentary'] ?? null,
-                'is_budget' => $fields['is_budget'] ,
-                'responsible_id' => $fields['responsible_id']
-            ]);
+        // Datos comunes para create / update
+        $data = [
+            'centre_id'           => $fields['centre_id'],
+            'date'                => $fields['date'],
+            'comments'            => $fields['comments'] ?? null,
+            'total'               => $total,
+            'services'            => $services,
+            'completed'           => $fields['completed'],
+            'internal_commentary' => $fields['internal_commentary'] ?? null,
+            'is_budget'           => $fields['is_budget'],
+            'responsible_id'      => $fields['responsible_id'],
+        ];
+
+        if (!empty($fields['invoice_id'])) {
+            $invoice = Invoice::findOrFail($fields['invoice_id']);
+            $invoice->update($data);
+        } else {
+            $invoice = Invoice::create($data);
         }
 
         $invoice_number = "COT_" . $invoice->id;
         $invoice->invoice_number = $invoice_number;
-        $invoice->save();        
         
+        $invoice->rows()->delete();   
+        $invoice->rows()->createMany($fields['rows']);
+        
+        $invoice->save();        
+    
         $centre = Centre::with('responsibles')->find($fields['centre_id']);
         $centre->responsible = $centre->responsibles()->find($fields['responsible_id']);
         
@@ -344,18 +358,11 @@ class InvoicesController extends Controller
         }
 
 
-        // dump($fields);
-
         $pdf = Pdf::loadView('invoice', [
-            'invoice_number' => $invoice_number,
+            'invoice' => $invoice,
             'date' => Carbon::now()->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
-            'centre' => $centre,
-            'comments' => $fields['comments'] ?? null,
-            'custom' => true,
-            'concept' => $fields['concept'],
-            'quantity' => $fields['quantity'],
-            'price' => $fields['price'],
-            
+            'responsible' => $centre->responsible,
+            'customInvoice' => true,
         ]);
         
         $pdfContent = $pdf->output();

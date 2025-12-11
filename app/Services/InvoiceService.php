@@ -112,12 +112,10 @@ class InvoiceService
 
         // 3. Generar PDF
         $pdf = Pdf::loadView('invoice', [
-            'invoice_number' => $invoice_number,
+            'invoice' => $invoice,
             'date' => Carbon::parse($date)->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
-            'centre' => $centre,
             'projects' => $groupedByProject,
-            'comments' => $fields['comments'] ?? null,
-            'custom' => false,
+            'responsible' => $centre->responsible,
         ]);
 
         $pdfContent = $pdf->output();

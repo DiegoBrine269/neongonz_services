@@ -34,4 +34,9 @@ class Invoice extends Model
     {
         return $this->hasMany(ProjectVehicle::class, 'invoice_id');
     }
+
+    public function rows()
+    {
+        return $this->hasMany(InvoiceRow::class);
+    }
 }

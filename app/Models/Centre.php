@@ -30,4 +30,6 @@ class Centre extends Model
     {
         return $this->belongsToMany(Responsible::class, 'centre_responsible');
     }
+
+
 }

@@ -133,7 +133,7 @@
                 <td style="width: 32%; padding-left:5px;">
                     <div style="width:100%; border: 1px solid black; padding: 8px; font-size: 10px;">
                         <p class="bold" style=" text-align: center; text-transform: uppercase">Cotización</p>
-                        <p><span class="bold" >Número:</span> {{$invoice_number}}</p>
+                        <p><span class="bold" >Número:</span> {{$invoice->invoice_number}}</p>
                         <p><span class="bold" >Lugar de expedición</span>: Ciudad de México</p>
                         <p><span class="bold" >Fecha de expedición</span>: {{$date}}</p>
                     </div>
@@ -155,19 +155,19 @@
                 <td style="width: 75%; padding:0">
                     BIMBO, S.A DE C.V
                 </td>
-                <td><p style="line-height: 0; margin:0; text-align: right"><span class="bold">At'n:</span> {{ $centre->responsible->name }}</p> </td>
+                <td><p style="line-height: 0; margin:0; text-align: right"><span class="bold">At'n:</span> {{ $responsible->name }}</p> </td>
             </tr>
             <tr>
                 <td>
-                    {{ $centre->name }}
+                    {{ $invoice->centre->name }}
                 </td>
             </tr>
         </table>
     
         <br>
     
-        @if ($comments)
-            <p><span class="bold">Comentarios o instrucciones especiales:</span> {{$comments}} </p>
+        @if ($invoice->comments)
+            <p><span class="bold">Comentarios o instrucciones especiales:</span> {{$invoice->comments}} </p>
         @endif
         <table class="lista" cellspacing="0" cellpadding="0">
             <tr>
@@ -182,20 +182,22 @@
             @endphp
 
 
-            @if($custom)
-                <tr>
-                    <td class="text-center" style="min-width: 70px">{{ $quantity }}</td>
-                    <td >
-                        {{ $concept }} 
-                    </td>
-                    <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price, 2) }}</td>
-                    <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($quantity * $price, 2) }}</td>
-                </tr>
+            @if($invoice->rows->count() > 0)
+                @foreach ($invoice->rows as $row)
+                    <tr>
+                        <td class="text-center" style="min-width: 70px">{{ $row->quantity }}</td>
+                        <td >
+                            {{ $row->concept }} 
+                        </td>
+                        <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($row->price, 2) }}</td>
+                        <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($row->total, 2) }}</td>
+                    </tr>
 
-            @php
-                $grandTotal = $quantity * $price; 
-            @endphp
-            
+                    @php
+                        $grandTotal += $row->total; 
+                    @endphp
+                @endforeach
+        
             {{-- Si no es custom, muestra los vehículos agrupados por proyecto y tipo --}}
             @else
                 @foreach ($projects as $project)                
