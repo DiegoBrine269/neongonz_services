@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Cierra proyectos que llevan más de 7 días en estado abierto sin actividad
-Schedule::command(LimpiarProyectos::class)->everyDay()->description('Cierra proyectos inactivos');
+Schedule::command(LimpiarProyectos::class)->daily()->description('Cierra proyectos inactivos');
