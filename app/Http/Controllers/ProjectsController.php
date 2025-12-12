@@ -40,14 +40,9 @@ class ProjectsController extends Controller
             // dump("El usuario solo quiere ver proyectos abiertos");
         }
         
-        $projects = $query->get();
-
-        // $projects = Project::with(['centre', 'service'])->orderBy('id', 'desc')->get();
-
-        $projects = $projects->map(function ($project) {
-            $project->total_vehicles = $project->vehicles()->count();
-            return $project;
-        });
+        $projects = $query
+            ->withCount(['vehicles as total_vehicles']) // agrega total_vehicles
+            ->paginate(20);
 
         return response()->json($projects);
     }
