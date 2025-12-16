@@ -38,7 +38,8 @@ class InvoicesController extends Controller
                     // Si es un filtro por fecha, convertirla a formato Y-m-d
                     if ($field === 'date') {
                         try {
-                            $value = \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+                            // $value = \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+                            $query->where('date', '=', $value);
                         } catch (\Exception $e) {
                             continue; // Ignorar si la fecha no se puede convertir
                         }

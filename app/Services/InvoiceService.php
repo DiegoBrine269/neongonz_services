@@ -15,7 +15,8 @@ class InvoiceService
     public function saveInvoice(array $fields, ?Invoice $invoice = null)
     {
 
-        $centre = Centre::find($fields['vehicles'][0]['centre_id']);
+        $centre = Centre::find($fields['vehicles'][0]['centre_id']); // puede ser null si no existe
+        $centreId = $centre?->id; // int|null
 
         $responsible_id = (int)$fields['responsible_id'] ?? $invoice->responsible_id ?? $centre->responsibles()->first()?->id ?? null;
 
@@ -25,23 +26,37 @@ class InvoiceService
         $date = $fields['date'] ?? today();
 
         // 1. Agrupar por proyecto y calcular totales
-        $groupedByProject = collect($fields['vehicles'])->groupBy(function ($vehicle) {
+        $groupedByProject = collect($fields['vehicles'])->groupBy(function ($vehicle)  {
             return $vehicle['project']['id'];
-        })->map(function ($vehicles, $projectId) {
+        })->map(function ($vehicles, $projectId) use ($centreId) {
             $service = $vehicles[0]['project']['service'];
             $service_id = $vehicles[0]['project']['service_id'];
 
             $serviceVehicleTypes = DB::table('service_vehicle_type')
                 ->where('service_id', $service_id)
+                ->where(function ($q) use ($centreId) {
+                    $q->whereNull('centre_id'); // general siempre
+                    if ($centreId !== null) {
+                        $q->orWhere('centre_id', $centreId); // específico del centro
+                    }
+                })
                 ->get()
-                ->keyBy('vehicle_type_id');
+                ->groupBy('vehicle_type_id');
 
-            $_vehicles = $vehicles->map(function ($vehicle) use ($serviceVehicleTypes) {
-                $vehicleTypeId = $vehicle['vehicle_type_id'];
-                $price = $serviceVehicleTypes->get($vehicleTypeId)->price ?? 0;
-                $vehicle['price'] = $price;
+            $_vehicles = $vehicles->map(function ($vehicle) use ($serviceVehicleTypes, $centreId) {
+                $vehicleTypeId = (int) $vehicle['vehicle_type_id'];
+
+                $rows = $serviceVehicleTypes->get($vehicleTypeId, collect());
+
+                $row = $centreId !== null
+                    ? ($rows->firstWhere('centre_id', $centreId) ?? $rows->firstWhere('centre_id', null))
+                    : $rows->firstWhere('centre_id', null);
+
+                $vehicle['price'] = $row?->price ?? 0;
+
                 unset($vehicle['project']);
-                return (object)$vehicle;
+
+                return (object) $vehicle;
             });
 
             $vehiclesGroupedByPrice = $_vehicles->groupBy('price')->map(function ($group) {

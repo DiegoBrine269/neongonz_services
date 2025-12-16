@@ -45,12 +45,7 @@ class VehiclesController extends Controller
             ->where('created_at', '>=', '2025-09-01') 
             ->get()
             ->map(function ($projectVehicle) {
-                $service = $projectVehicle->project->service;
                 $vehicleTypeId = $projectVehicle->vehicle->vehicle_type_id;
-
-                // Filtrar solo el tipo de vehículo asociado al vehículo actual
-                $filteredType = $service->vehicleTypes
-                    ->firstWhere('id', $vehicleTypeId);
 
                 return [
                     'id' => $projectVehicle->id,
@@ -63,14 +58,14 @@ class VehiclesController extends Controller
                     'project_id' => $projectVehicle->project->id,
                     'project' => [
                         'id' => $projectVehicle->project->id,
-                        'service' => $service->name,
-                        'service_id' => $service->id,
+                        'service' => $projectVehicle->project->service->name,
+                        'service_id' => $projectVehicle->project->service->id,
                         'centre_id' => $projectVehicle->project->centre_id,
                         'date' => $projectVehicle->project->date,
                     ],
 
-                    // Precio obtenido desde la tabla pivot service_vehicle_type
-                    'price' => $filteredType?->pivot?->price ?? null,
+                    // ✅ ya resuelto con centre_id + fallback a null
+                    'price' => $projectVehicle->price,
                 ];
             });
         }

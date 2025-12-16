@@ -13,10 +13,6 @@ class ServicesController extends Controller
      */
     public function index()
     {
-
-        $user = auth()->user();
-
-
         $query = Service::orderBy('name', 'asc')->select('id', 'name');
 
         $services = $query->get();
@@ -92,31 +88,31 @@ class ServicesController extends Controller
             'name' => 'required|unique:services,name,' . $service->id,
             'vehicles_types_prices' => 'array',
             'vehicles_types_prices.*.vehicle_type_id' => 'exists:vehicles_types,id',
+            'centre_id' => 'nullable|exists:centres,id',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
             'vehicles_types_prices.array' => 'El precio de los tipos de vehículos debe ser un array',
             'vehicles_types_prices.*.vehicle_type_id.exists' => 'El id del tipo de vehículo no existe',
+            'centre_id.exists' => 'El id del centro no existe',
         ]);
 
-        // return response()->json([
-        //     'request' => $request->vehicles_types_prices,
-        // ]);
- 
+        $centre_id = $fields['centre_id'] ?? null;
+
         // Actualizar los precios de los tipos de vehículos
         if ($request->vehicles_types_prices) {
             foreach ($request->vehicles_types_prices as $item) {
-
             // Insertando o actualizando en la tabla pivote
             DB::table('service_vehicle_type')
                 ->updateOrInsert(
-                [
-                    'service_id' => $service->id,
-                    'vehicle_type_id' => $item['vehicle_type_id'],
-                ],
-                [
-                    'price' => $item['price'],
-                ]
+                    [
+                        'service_id' => $service->id,
+                        'vehicle_type_id' => $item['vehicle_type_id'],
+                        'centre_id' => $centre_id,
+                    ],
+                    [
+                        'price' => $item['price'],
+                    ]
                 );
             }
         }

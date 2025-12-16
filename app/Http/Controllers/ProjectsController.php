@@ -16,7 +16,7 @@ class ProjectsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         // Get all projects
 
@@ -30,6 +30,7 @@ class ProjectsController extends Controller
         ])
         ->select('id', 'is_open', 'date', 'centre_id', 'service_id') // Selecciona solo los campos necesarios de la tabla projects
         ->orderBy('updated_at', 'desc');
+        
         $show_closed_param = request()->query('show_closed');
 
         if($user->role == 'user'){
@@ -37,14 +38,60 @@ class ProjectsController extends Controller
         }
         else if ($user->role == 'admin' && $show_closed_param == 0) {
             $query->where('is_open', 1); 
-            // dump("El usuario solo quiere ver proyectos abiertos");
+        }
+
+        if ($request->has('filter')) {
+            foreach ($request->filter as $filter) {
+                if (isset($filter['field'], $filter['type'], $filter['value'])) {
+    
+                    $field = $filter['field'];
+                    $type = $filter['type'];
+                    $value = $filter['value'];
+    
+                    if($field === 'id'){
+                        $query->where('id', '=', $value);
+                    }
+                    elseif ($field === 'date') {
+                        $query->where('date', '=', $value);
+                    }
+
+                    elseif ($field === 'service.name') {
+                        $query->whereHas('service', function ($q) use ($type, $value) {
+                            if ($type === 'like') {
+                                $q->where('name', 'ilike', '%' . $value . '%');
+                            } elseif ($type === '=') {
+                                $q->where('name', '=', $value);
+                            }
+                        });
+                    }
+                    
+    
+                    elseif ($field === 'centre.name') {
+                        $query->whereHas('centre', function ($q) use ($type, $value) {
+                            if ($type === 'like') {
+                                $q->where('name', 'ilike', '%' . $value . '%');
+                            } elseif ($type === '=') {
+                                $q->where('name', '=', $value);
+                            }
+                        });
+                    } elseif (in_array($field, ['date', 'invoice_number'])) {
+                        if ($type === 'like') {
+                            $query->where($field, 'ilike', '%' . $value . '%');
+                        } elseif ($type === '=') {
+                            $query->where($field, '=', $value);
+                        }
+                        
+                    } 
+
+                }
+            }
         }
         
         $projects = $query
-            ->withCount(['vehicles as total_vehicles']) // agrega total_vehicles
+            ->withCount(['vehicles as total_vehicles'])
             ->paginate(20);
 
-        return response()->json($projects);
+        return $projects;
     }
 
 

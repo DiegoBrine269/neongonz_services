@@ -29,4 +29,24 @@ class ProjectVehicle extends Model
     {
         return $this->belongsTo(User::class);
     }
+    
+    public function getPriceAttribute(): ?string
+    {
+        $project = $this->project;
+        $vehicle = $this->vehicle;
+
+        if (!$project || !$vehicle) {
+            return null;
+        }
+
+        $service = $project->service;
+        if (!$service) {
+            return null;
+        }
+
+        return $service->resolveVehicleTypePrice(
+            $vehicle->vehicle_type_id,
+            $project->centre_id
+        );
+    }
 }
