@@ -89,12 +89,15 @@ class ServicesController extends Controller
             'vehicles_types_prices' => 'array',
             'vehicles_types_prices.*.vehicle_type_id' => 'exists:vehicles_types,id',
             'centre_id' => 'nullable|exists:centres,id',
+            'sat_unit_key' => 'required|string',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
             'vehicles_types_prices.array' => 'El precio de los tipos de vehículos debe ser un array',
             'vehicles_types_prices.*.vehicle_type_id.exists' => 'El id del tipo de vehículo no existe',
             'centre_id.exists' => 'El id del centro no existe',
+            'sat_unit_key.required' => 'La clave de unidad SAT es obligatoria',
+            'sat_unit_key.string' => 'La clave de unidad SAT debe ser una cadena de texto',
         ]);
 
         $centre_id = $fields['centre_id'] ?? null;
@@ -116,7 +119,7 @@ class ServicesController extends Controller
                 );
             }
         }
-        
+        dump($fields);
         $service->update($fields);
 
         return response()->json([

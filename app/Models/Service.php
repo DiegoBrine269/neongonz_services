@@ -17,6 +17,7 @@ class Service extends Model
     protected $fillable = [
         'name',
         'is_public',
+        'sat_unit_key',
     ];
 
     public function projects()

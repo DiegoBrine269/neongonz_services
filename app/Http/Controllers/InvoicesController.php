@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Facturapi\Facturapi;
 
 class InvoicesController extends Controller
 {
@@ -632,4 +633,66 @@ class InvoicesController extends Controller
         return true;
             
     }
+
+    public function createSatInvoice(Request $request)
+    {
+        $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
+        
+
+        dump($result);
+
+        $invoice = $facturapi->Invoices->create([
+            "customer" => [
+                "legal_name" => "Dunder Mifflin",
+                "email" => "email@example.com",
+                "tax_id" => "XAXX010101000",
+                "tax_system" => "616",
+                "address" => [
+                    "zip" => "85900"
+                ]
+            ],
+            "items" => [
+                [
+                "quantity" => 2,
+                "product" => [
+                    "description" => "Ukelele",
+                    "product_key" => "60131324",
+                    "price" => 420.69,
+                    "sku" => "ABC4567"
+                ]
+                ] // Add as many products as you want to include in your invoice
+            ],
+            "payment_form" => \Facturapi\PaymentForm::EFECTIVO,
+            "folio_number" => 581,
+            "series" => "F"
+        ]);
+
+        $zip = $facturapi->Invoices->download_zip($invoice->id);
+
+        if (!Storage::exists('invoices/sat')) {
+            Storage::makeDirectory('invoices/sat');
+        }
+
+        Storage::put("invoices/sat/$invoice->id.zip", $zip);
+
+
+        // return response($zip, 200)
+        //     ->header('Content-Type', 'application/zip')
+        //     ->header('Content-Disposition', 'attachment; filename="invoice.zip"')
+        //     ->header('Access-Control-Expose-Headers', 'Content-Disposition');
+    }
+
+
+    public function showUnits()
+    {  
+        $units = DB::table('sat_units')
+            ->where('active', true)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        
+
+        return $units;
+    }
+
 }

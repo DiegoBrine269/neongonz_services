@@ -36,16 +36,27 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
 
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
 
-    Route::delete('/invoices', [InvoicesController::class, 'destroyMultiple']);
-    Route::post('/invoices/send', [InvoicesController::class, 'send']);
-    Route::get('/invoices/pending', [InvoicesController::class, 'pending']);
-    Route::get('/invoices/email-pending', [InvoicesController::class, 'emailPending']);
+    Route::prefix('invoices')->group(function () {
 
-    Route::resource('invoices', InvoicesController::class)->except(['create', 'edit']);
+        Route::delete('/', [InvoicesController::class, 'destroyMultiple']);
+        Route::post('/send', [InvoicesController::class, 'send']);
+        Route::get('/pending', [InvoicesController::class, 'pending']);
+        Route::get('/email-pending', [InvoicesController::class, 'emailPending']);
+        Route::post('/create-custom', [InvoicesController::class, 'createCustom']);
+
+        // catálogos
+        Route::get('/units', [InvoicesController::class, 'showUnits']);
+
+        // invoice-specific
+        Route::get('/{invoice}/pdf', [InvoicesController::class, 'downloadPdf'])->whereNumber('invoice');
+        Route::post('/{invoice}/sat', [InvoicesController::class, 'createSatInvoice'])->whereNumber('invoice');
+    });
+
+    // resource al final
+    Route::resource('invoices', InvoicesController::class)
+        ->except(['create', 'edit']);
 
 
-    Route::get('/invoices/{invoice}/pdf', [InvoicesController::class, 'downloadPdf']);
-    Route::post('/invoices/create-custom', [InvoicesController::class, 'createCustom']);
 
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class);
