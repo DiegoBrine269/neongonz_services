@@ -5,7 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
-use App\Notifications\ResetPasswordNotification;
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -59,12 +59,8 @@ class User extends Authenticatable
             // ->withPivot('commentary'); // Incluye campos adicionales de la tabla pivote si es necesario
     }
 
-    public function sendPasswordResetNotification($token, $url = null)
+    public function sendPasswordResetNotification($token)
     {
-        if (!$url) {
-            $url = url("/reset-password?token=$token&email=" . urlencode($this->email));
-        }
-
-        $this->notify(new ResetPasswordNotification($token, $url));
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

@@ -34,6 +34,7 @@ class CentresController extends Controller
             'name' =>'required|max:255|unique:centres',
             'responsible_id' =>'required|exists:responsibles,id',
             'location' => 'nullable|max:255',
+            'customer_id' => 'required|exists:customers,id',
         ],[
             'name.required' => 'El nombre del centro de ventas es obligatorio.',
             'name.max' => 'El nombre debe ser menor a 255 caracteres.',
@@ -41,6 +42,8 @@ class CentresController extends Controller
             'responsible_id.required' => 'El responsable es obligatorio.',
             'responsible_id.exists' => 'El responsable seleccionado no es válido.',
             'location.max' => 'La ubicación debe ser menor a 255 caracteres.',
+            'customer_id.required' => 'El cliente es obligatorio.',
+            'customer_id.exists' => 'El cliente seleccionado no es válido.',
         ]);
 
         $centre = Centre::create([
@@ -107,6 +110,7 @@ class CentresController extends Controller
             'name' =>'required|max:255|unique:centres,name,'.$id,
             'location' => 'nullable|max:255',
             'responsibles' =>'required|array|exists:responsibles,id',
+            'customer_id' => 'required|exists:customers,id',
         ],[
 
             'name.required' => 'El nombre del centro de ventas es obligatorio.',
@@ -115,10 +119,12 @@ class CentresController extends Controller
             'location.max' => 'La ubicación debe ser menor a 255 caracteres.',
             'responsibles.required' => 'Debe seleccionar al menos un responsable.',
             'responsibles.array' => 'El formato de los responsables no es válido.',
+            'responsibles.exists' => 'Uno o más responsables seleccionados no son válidos.',
+            'customer_id.required' => 'El cliente es obligatorio.',
+            'customer_id.exists' => 'El cliente seleccionado no es válido.',
         ]);
 
-        $centre->name = $fields['name'];
-        $centre->location = $request->location;
+        $centre->update($fields);
         $centre->responsibles()->sync($fields['responsibles']);
         $centre->save();
 

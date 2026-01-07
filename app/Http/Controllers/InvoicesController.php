@@ -189,7 +189,7 @@ class InvoicesController extends Controller
 
             $type = $invoicesGroup->first()->is_budget ? 'PRE' : 'COT';
 
-            $html = view('email', [
+            $html = view('emails/invoice', [
                 'destinatario' => $responsiblePerson->name,
                 'type' => $type
             ])->render();
@@ -638,15 +638,14 @@ class InvoicesController extends Controller
     {
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
         
+        // $invoice = Invoice::find(
 
-        dump($result);
-
-        $invoice = $facturapi->Invoices->create([
+        $sat_invoice = $facturapi->Invoices->create([
             "customer" => [
-                "legal_name" => "Dunder Mifflin",
-                "email" => "email@example.com",
-                "tax_id" => "XAXX010101000",
-                "tax_system" => "616",
+                "legal_name" => "BIMBO",
+                // "email" => "email@example.com",
+                "tax_id" => "BIM011108DJ5",
+                "tax_system" => "601",
                 "address" => [
                     "zip" => "85900"
                 ]
@@ -654,26 +653,26 @@ class InvoicesController extends Controller
             "items" => [
                 [
                 "quantity" => 2,
-                "product" => [
-                    "description" => "Ukelele",
-                    "product_key" => "60131324",
-                    "price" => 420.69,
-                    "sku" => "ABC4567"
-                ]
-                ] // Add as many products as you want to include in your invoice
+                    "product" => [
+                        "description" => "Ukelele",
+                        "product_key" => "60131324",
+                        "price" => 420.69,
+                        "sku" => "ABC4567"
+                    ]
+                ] 
             ],
             "payment_form" => \Facturapi\PaymentForm::EFECTIVO,
             "folio_number" => 581,
             "series" => "F"
         ]);
 
-        $zip = $facturapi->Invoices->download_zip($invoice->id);
+        $zip = $facturapi->Invoices->download_zip($sat_invoice->id);
 
         if (!Storage::exists('invoices/sat')) {
             Storage::makeDirectory('invoices/sat');
         }
 
-        Storage::put("invoices/sat/$invoice->id.zip", $zip);
+        Storage::put("invoices/sat/$sat_invoice->id.zip", $zip);
 
 
         // return response($zip, 200)

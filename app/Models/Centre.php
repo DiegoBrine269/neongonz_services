@@ -13,6 +13,7 @@ class Centre extends Model
         'name',
         'location',
         'responsible',
+        'customer_id',
     ];
 
     public function vehicles()

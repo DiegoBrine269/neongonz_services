@@ -2,17 +2,21 @@
 
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Resend\Laravel\Facades\Resend;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Password;
 use App\Http\Controllers\CentresController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\ProjectsController;
+
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
+use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\ResponsiblesController;
 
-use App\Http\Controllers\Auth\PasswordResetController;
 
 
 
@@ -57,6 +61,8 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
         ->except(['create', 'edit']);
 
 
+    //Customers
+    Route::apiResource('customers', CustomersController::class);
 
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class);
@@ -89,5 +95,5 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
 });
 
-// Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
-// Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);

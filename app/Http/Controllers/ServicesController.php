@@ -74,7 +74,7 @@ class ServicesController extends Controller
      */
     public function update(Request $request, string $id)
     {
-    
+
 
         $service = Service::find($id);
 
@@ -119,7 +119,6 @@ class ServicesController extends Controller
                 );
             }
         }
-        dump($fields);
         $service->update($fields);
 
         return response()->json([
