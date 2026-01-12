@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InvoiceRow extends Model
 {
-    protected $fillable = ['invoice_id', 'concept', 'quantity', 'price', 'total'];
+    protected $fillable = ['invoice_id', 'concept', 'quantity', 'price', 'total', 'service_id', 'sat_unit_key', 'sat_key_prod_serv'];
 
     public function setPriceAttribute($value)
     {
@@ -18,6 +18,11 @@ class InvoiceRow extends Model
     {
         $this->attributes['quantity'] = $value;
         $this->attributes['total'] = ($this->price ?? 0) * $value;
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 }
 
