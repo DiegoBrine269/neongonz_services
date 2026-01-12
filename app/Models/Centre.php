@@ -32,5 +32,8 @@ class Centre extends Model
         return $this->belongsToMany(Responsible::class, 'centre_responsible');
     }
 
-
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 }

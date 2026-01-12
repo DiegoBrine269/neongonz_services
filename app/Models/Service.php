@@ -18,6 +18,7 @@ class Service extends Model
         'name',
         'is_public',
         'sat_unit_key',
+        'sat_key_prod_serv',
     ];
 
     public function projects()

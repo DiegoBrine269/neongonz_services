@@ -14,7 +14,6 @@ class ServicesController extends Controller
     public function index()
     {
         $query = Service::orderBy('name', 'asc')->select('id', 'name');
-
         $services = $query->get();
 
 
@@ -90,6 +89,7 @@ class ServicesController extends Controller
             'vehicles_types_prices.*.vehicle_type_id' => 'exists:vehicles_types,id',
             'centre_id' => 'nullable|exists:centres,id',
             'sat_unit_key' => 'required|string',
+            'sat_key_prod_serv' => 'required|string|digits:8',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
@@ -98,6 +98,9 @@ class ServicesController extends Controller
             'centre_id.exists' => 'El id del centro no existe',
             'sat_unit_key.required' => 'La clave de unidad SAT es obligatoria',
             'sat_unit_key.string' => 'La clave de unidad SAT debe ser una cadena de texto',
+            'sat_key_prod_serv.required' => 'La clave de producto o servicio SAT es obligatoria',
+            'sat_key_prod_serv.string' => 'La clave de producto o servicio SAT debe ser una cadena de texto',
+            'sat_key_prod_serv.digits' => 'La clave de producto o servicio SAT debe tener 8 dígitos',
         ]);
 
         $centre_id = $fields['centre_id'] ?? null;

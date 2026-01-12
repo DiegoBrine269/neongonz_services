@@ -71,6 +71,7 @@ class InvoiceService
 
             return (object)[
                 'service' => $service,
+                'service_id' => $service_id,
                 'vehicles_grouped_by_price' => $vehiclesGroupedByPrice,
                 'service_vehicle_types' => $serviceVehicleTypes,
             ];
@@ -124,38 +125,12 @@ class InvoiceService
             $invoice->invoice_number = $invoice_number;
         });
 
-        // Crear arreglo de rows
-        // @foreach ($projects as $project)                
-        //     @foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price)
-
-        //         @foreach ($grouped_by_price as $data)
-        //             @php
-        //                 $grouped_vehicles_by_type = $data['group'];
-        //                 $type = $data['type'];
-        //                 // $grouped_vehicles = $data['group']; // Obtén el grupo de vehículos
-        //                 $totalForGroup = $grouped_vehicles_by_type->sum('price'); // Calcula el total del grupo
-        //                 $grandTotal += $totalForGroup; 
-        //             @endphp
-        //             <tr>
-        //                 <td class="text-center" style="min-width: 70px">{{ count( $grouped_vehicles_by_type) }}</td>
-        //                 <td >
-        //                     {{ $project->service . " (" . $type ."):" }} 
-        //                     {{ implode(', ', $grouped_vehicles_by_type->pluck('eco')->toArray()) }}
-        //                 </td>
-        //                 <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price,2) }}</td>
-        //                 <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($totalForGroup, 2) }}</td>
-        //             </tr>
-        //         @endforeach
-        //     @endforeach
-        // @endforeach
-
         $rows = [];
 
         foreach ($groupedByProject as $project) {
             foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price) {
                 foreach ($grouped_by_price as $data) {
                     $groupedVehicles = $data['group'];
-                    
                     $quantity = count($groupedVehicles);
                     $concept = $project->service . " (" . $data['type'] . "): " . implode(', ', $groupedVehicles->pluck('eco')->toArray());
                     $totalForGroup = $groupedVehicles->sum('price');
@@ -165,12 +140,11 @@ class InvoiceService
                         'concept' => $concept,
                         'price' => $price,
                         'total' => $totalForGroup,
+                        'service_id' => $project->service_id,
                     ];
                 }
             }
         }
-
-        dump($rows);
 
         $invoice->rows()->createMany($rows);
 

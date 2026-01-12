@@ -47,13 +47,17 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
         Route::get('/pending', [InvoicesController::class, 'pending']);
         Route::get('/email-pending', [InvoicesController::class, 'emailPending']);
         Route::post('/create-custom', [InvoicesController::class, 'createCustom']);
+        Route::post('/create-sat-invoice', [InvoicesController::class, 'createSatInvoice']);
+        Route::post('/create-sat-complement', [InvoicesController::class, 'createSatComplement']);
 
         // catálogos
         Route::get('/units', [InvoicesController::class, 'showUnits']);
 
         // invoice-specific
+        Route::put('/{invoice}/update-status', [InvoicesController::class, 'updateStatus'])->whereNumber('invoice');
         Route::get('/{invoice}/pdf', [InvoicesController::class, 'downloadPdf'])->whereNumber('invoice');
-        Route::post('/{invoice}/sat', [InvoicesController::class, 'createSatInvoice'])->whereNumber('invoice');
+
+
     });
 
     // resource al final
