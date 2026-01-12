@@ -32,7 +32,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
-            $table->dropColumn(['oc', 'uuid', 'payment_method', 'payment_form', 'f_receipt', 'billing_date', 'validation_date']);
+            $table->dropColumn(['oc', 'uuid', 'payment_method', 'payment_form', 'f_receipt', 'billing_date', 'validation_date', 'uuid_complement']);
         });
     }
 };
