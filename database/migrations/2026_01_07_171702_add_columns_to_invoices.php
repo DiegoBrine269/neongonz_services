@@ -20,7 +20,6 @@ return new class extends Migration
             $table->date('billing_date')->nullable()->after('f_receipt');
             $table->date('validation_date')->nullable()->after('validation_date');
             $table->char('uuid_complement', '50')->nullable()->after('validation_date');
-            $table->char('uuid_complement', '50')->nullable()->after('uuid_complement');
             
 
 
