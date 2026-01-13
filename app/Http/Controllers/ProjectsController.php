@@ -395,7 +395,7 @@ class ProjectsController extends Controller
         ]);
 
         // dump(json_encode($fields['extra_projects']));
-        $ids_related_projects = $fields['extra_projects'] ?? [];
+        $related_projects = $fields['extra_projects'] ?? [];
 
 
 
@@ -403,7 +403,7 @@ class ProjectsController extends Controller
             'centre_id' => $fields['centre_id'],
             'service_id' => $fields['service_id'],
             'date' => $fields['date'],
-            'related_projects' => json_encode($ids_related_projects),
+            'related_projects' => json_encode($related_projects),
             'commentary' => $fields['commentary'], // Si usas cast a array
         ]);
 
