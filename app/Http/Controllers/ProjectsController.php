@@ -412,6 +412,9 @@ class ProjectsController extends Controller
         if (!empty($related_projects)) {
             foreach ($related_projects as $id_extra_project) {
                 $extra_project = Project::find($id_extra_project);
+
+                if(!$extra_project)
+                    continue;
         
                 // Copiamos los proyectos relacionados
                 $_related_projects = $related_projects;
@@ -427,6 +430,7 @@ class ProjectsController extends Controller
                 // dump($_related_projects);
         
                 // Actualizamos el proyecto relacionado
+
                 $extra_project->update([
                     'related_projects' => json_encode(array_values($_related_projects)), // Si usas cast a array
                 ]);
