@@ -379,7 +379,7 @@ class ProjectsController extends Controller
             'service_id' => 'required|exists:services,id',
             'date' => "required|date",
             'extra_projects' => 'nullable|array',
-            'extra_projects.*' => 'exists:projects,id',
+            'extra_projects.*' => 'projects,id',
             'commentary' => 'nullable|string|max:255',
         ],[
             'centre_id.required' => 'El campo centre_id es obligatorio.',
@@ -389,24 +389,25 @@ class ProjectsController extends Controller
             'date.required' => 'La fecha es obligatoria.',
             'date.date' => 'La fecha no es válida.',
             'extra_projects.array' => 'Los proyectos extras deben ser un array.',
-            'extra_projects.*.exists' => 'Uno o más proyectos extras especificados no existen.',
+            // 'extra_projects.*.exists' => 'Uno o más proyectos extras especificados no existen.',
             'commentary.string' => 'El comentario debe ser una cadena de texto.',
             'commentary.max' => 'El comentario no puede tener más de 255 caracteres.',
         ]);
 
         // dump(json_encode($fields['extra_projects']));
-        $related_projects = $fields['extra_projects'] ?? [];
+        $ids_related_projects = $fields['extra_projects'] ?? [];
+
+
 
         $project->update([
             'centre_id' => $fields['centre_id'],
             'service_id' => $fields['service_id'],
             'date' => $fields['date'],
-            'related_projects' => json_encode($related_projects),
+            'related_projects' => json_encode($ids_related_projects),
             'commentary' => $fields['commentary'], // Si usas cast a array
         ]);
 
         // Si hay proyectos extras, también asignarles el campo related_projects
-
         // dump($related_projects);
         if (!empty($related_projects)) {
             foreach ($related_projects as $id_extra_project) {
