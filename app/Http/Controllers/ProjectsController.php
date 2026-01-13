@@ -379,7 +379,7 @@ class ProjectsController extends Controller
             'service_id' => 'required|exists:services,id',
             'date' => "required|date",
             'extra_projects' => 'nullable|array',
-            'extra_projects.*' => 'projects,id',
+            // 'extra_projects.*' => 'exists:projects,id',
             'commentary' => 'nullable|string|max:255',
         ],[
             'centre_id.required' => 'El campo centre_id es obligatorio.',
