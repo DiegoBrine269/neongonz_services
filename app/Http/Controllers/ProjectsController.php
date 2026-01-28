@@ -458,7 +458,6 @@ class ProjectsController extends Controller
         $project = Project::find($id);
         $project->vehicles()->detach();
 
-
         $project->delete();
     }
 

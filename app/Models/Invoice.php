@@ -7,12 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
-    protected $fillable = ['centre_id', 'date', 'total', 'comments', 'path', 'invoice_number', 'completed', 'concept', 'quantity', 'price', 'internal_commentary', 'services', 'is_budget', 'responsible_id'];
-
-    // protected $casts = [
-    //     'date' => 'date:d/m/Y',
-    // ];
-
+    protected $fillable = [
+        'centre_id', 
+        'date', 
+        'total', 
+        'comments', 
+        'path', 
+        'invoice_number', 
+        'completed', 
+        'concept', 
+        'quantity', 
+        'price', 
+        'internal_commentary', 
+        'services', 
+        'is_budget', 
+        'responsible_id',
+        'billing_path', 
+        'complement_path', 
+        'billing_xml_path', 
+        'complement_xml_path'
+    ];
 
 
     public function invoiceVehicles() {
@@ -39,4 +53,15 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceRow::class);
     }
+
+    public function billing()
+    {
+        return $this->belongsTo(Billing::class, 'billing_id');
+    }
+
+    public function complement()
+    {
+        return $this->belongsTo(Billing::class, 'complement_id');
+    }
+
 }

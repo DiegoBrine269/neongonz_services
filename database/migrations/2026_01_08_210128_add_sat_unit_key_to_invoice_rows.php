@@ -33,7 +33,7 @@ return new class extends Migration
             //
             $table->dropForeign(['sat_unit_key']);
             $table->dropColumn('sat_unit_key');
-            // $table->dropColumn('sat_key_prod_serv');
+            $table->dropColumn('sat_key_prod_serv');
         });
     }
 };

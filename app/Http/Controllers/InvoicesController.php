@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Centre;
+use App\Models\Billing;
 use App\Models\Invoice;
 use App\Models\Project;
+use Facturapi\Facturapi;
 use App\Models\Responsible;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Facturapi\Facturapi;
+use Illuminate\Validation\ValidationException;
 
 class InvoicesController extends Controller
 {
@@ -287,6 +289,7 @@ class InvoicesController extends Controller
             'responsible_id' => 'required|exists:responsibles,id',
             'rows.*.sat_unit_key' => 'nullable|string|exists:sat_units,key',
             'rows.*.sat_key_prod_serv' => 'required|string|digits:8',
+            'rows.*.price'=>'required|numeric|min:1',
             
         ], [
             'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
@@ -314,7 +317,9 @@ class InvoicesController extends Controller
             'rows.*.sat_unit_key.exists' => 'Una o más unidades de medida no son válidas.',
             'rows.*.sat_key_prod_serv.required' => 'La clave de producto o servicio es obligatoria en todas las filas.',
             'rows.*.sat_key_prod_serv.digits' => 'La clave de producto o servicio debe tener 8 dígitos.',
-            
+            'rows.*.price.required' => 'El precio es obligatorio en todas las filas.',
+            'rows.*.price.numeric' => 'El precio debe ser un número.',
+            'rows.*.price.min' => 'El precio debe ser al menos 1.',
         ]);
     
 
@@ -323,8 +328,6 @@ class InvoicesController extends Controller
         $invoice = null;
         $invoice_number = null;
     
-        
-
         $rows = collect($fields['rows']);
         $total = $rows->sum(fn ($item) => $item['quantity'] * $item['price']);
         $services = $rows->pluck('concept')->implode(', ');
@@ -624,8 +627,13 @@ class InvoicesController extends Controller
             return false;
         }
 
+        $from = config('mail.mailers.smtp.username');
+
+        if (app()->environment('local')) 
+            $subject = "[CORREO DE PRUEBA] " . $subject;
+
         Resend::emails()->send([
-            'from' => 'Neón Gonz <servicios@neongonz.com>',
+            'from' => "Neón Gonz <$from>",
             'to' => [$email],
             'cc' => ['neongonz@hotmail.com'],
             'subject' => $subject,
@@ -638,16 +646,25 @@ class InvoicesController extends Controller
             
     }
 
-    public function createSatInvoice(Request $request)
+    public function createSatInvoice(Request $request, InvoiceService $service)
     {
         $fields = $request->validate([
             'invoice_ids' => 'required|array|min:1',
             'invoice_ids.*' => 'exists:invoices,id',
+            'joined' => 'boolean|required',
+            'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31,99',
+            'payment_method' => 'required|string|in:PUE,PPD',
         ], [
             'invoice_ids.required' => 'Debes seleccionar al menos una factura para generar el CFDI.',
             'invoice_ids.array' => 'El formato de los IDs de las facturas no es válido.',
             'invoice_ids.min' => 'Debes seleccionar al menos una factura para generar el CFDI.',
             'invoice_ids.*.exists' => 'Una o más facturas seleccionadas no existen.',
+            'joined.required' => 'El campo de facturación conjunta es obligatorio.',
+            'joined.boolean' => 'El campo de facturación conjunta debe ser verdadero o falso.',
+            'payment_form.required' => 'La forma de pago es obligatoria.',
+            'payment_form.in' => 'La forma de pago no es válida.',
+            'payment_method.required' => 'El método de pago es obligatorio.',
+            'payment_method.in' => 'El método de pago no es válido.',
         ]);
 
 
@@ -661,74 +678,14 @@ class InvoicesController extends Controller
                 return response()->json(['error' => 'El centro no tiene un cliente SAT asociado.'], 422);
         }
 
-
-        $fields = $request->validate([
-            'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31,99',
-            'payment_method' => 'required|string|in:PUE,PPD',
-        ], [
-            'payment_form.required' => 'La forma de pago es obligatoria.',
-            'payment_form.in' => 'La forma de pago no es válida.',
-            'payment_method.required' => 'El método de pago es obligatorio.',
-            'payment_method.in' => 'El método de pago no es válido.',
-        ]);
-
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
 
-        foreach($invoices as $invoice) {
-            // Extrayendo info. del cliente
-            $customer = $invoice->centre->customer;
-
-            // Extrayendo los items de la factura
-            $items = $invoice->rows->map(function ($row) use ($invoice) {
-                return [
-                    'quantity' => $row->quantity,
-                    'product' => [
-                        'description' => "$row->concept. $invoice->oc.",   
-                        'product_key' => $row->sat_key_prod_serv ?? $row->service->sat_key_prod_serv,
-                        'price' => (float) $row->price,
-                        "tax_included" => false,
-                        'unit_key' => $row->sat_unit_key ?? $row->service->sat_unit_key,
-                    ],
-                ];
-            })->values()->toArray();
-
-            $sat_invoice = $facturapi->Invoices->create([
-                "customer" => [
-                    "legal_name" => $customer->legal_name,
-                    // "email" => "email@example.com",
-                    "tax_id" => $customer->tax_id,
-                    "tax_system" => $customer->tax_system,
-                    "address" => [
-                        "zip" => $customer->address_zip,
-                    ]
-                ],
-                "items" => $items,
-                "payment_form" => $fields['payment_form'],
-                "payment_method" => $fields['payment_method'],
-                "folio_number" => $invoice->id,
-                "series" => "FACT"
-            ]);     
-            
-            $xmlPath = 'invoices/sat/fact/xml';
-            $pdfPath = 'invoices/sat/fact/pdf';
-
-            $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
-            $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
-
-            $fileName = trim("$invoice->id $invoice->oc");
-
-            Storage::put("$xmlPath/$fileName.xml", $xml);
-            Storage::put("$pdfPath/$fileName.pdf", $pdf);
-
-            if($invoice->status == 'factura'){
-                $invoice->status = 'f';
-                $invoice->uuid = trim($sat_invoice->uuid);
-                $invoice->billing_date = Carbon::now();
-                $invoice->payment_form = $fields['payment_form'];
-                $invoice->payment_method = $fields['payment_method'];
-                $invoice->save();
-            }
+        if($fields['joined']){
+            $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
+            $invoices->first()->setRelation('rows', $rowsJoined);
         }
+
+        $service->saveBilling($fields, $invoices, $facturapi);
     }
 
     public function createSatComplement(Request $request)
@@ -761,7 +718,6 @@ class InvoicesController extends Controller
             'payment_form.in' => 'La forma de pago no es válida.',
         ]);
 
-
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
 
         foreach($invoices as $invoice) {
@@ -786,17 +742,17 @@ class InvoicesController extends Controller
                             [
                                 "payment_form" => $fields['payment_form'],
                                     "related_documents" => [[
-                                            "uuid" => trim($invoice->uuid),
+                                            "uuid" => trim($invoice->billing->uuid),
                                             "amount" => $invoice->total,
                                             "installment" => 1,
-                                            "tax_included" => false,
-                                            // "last_balance" => 345.60,
-                                            // "taxes" => [[
-                                            //     "base" => 297.93,
-                                            //     "type" => "IVA",
-                                            //     "rate" => 0.16
-                                            // ]
-                                        //]
+                                            // "tax_included" => false,
+                                            "last_balance" => $invoice->total,
+                                            "taxes" => [[
+                                                "base" => $invoice->total / 1.16,
+                                                "type" => "IVA",
+                                                "rate" => 0.16
+                                            ]
+                                        ]
                                     ]
                                 ]
                             ]
@@ -807,20 +763,21 @@ class InvoicesController extends Controller
                 "series" => "COMP"
             ]);
 
-            $xmlPath = 'invoices/sat/comp/xml';
-            $pdfPath = 'invoices/sat/comp/pdf';
-
+            
             $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
             $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
-
+            
             $fileName = trim("$invoice->id $invoice->oc");
+            
+            $xmlPath = "invoices/sat/comp/xml/$fileName.xml";
+            $pdfPath = "invoices/sat/comp/pdf/$fileName.pdf";
 
-            Storage::put("$pdfPath/$fileName.pdf", $pdf);
-            Storage::put("$xmlPath/$fileName.xml", $xml);
+            Storage::put($xmlPath, $xml);
+            Storage::put($pdfPath, $pdf);
 
             if($invoice->status == 'complemento'){
                 $invoice->status = 'finalizada';
-                $invoice->payment_form = $fields['payment_form'];
+                $invoice->billing->payment_form = $fields['payment_form'];
                 $invoice->save();
             }
         }
@@ -855,7 +812,7 @@ class InvoicesController extends Controller
                     'oc.max' => 'El número de orden de compra no debe exceder los 50 caracteres.',
                 ]);
 
-                $invoice->oc = $request->input('oc');
+                $invoice->oc = trim($request->input('oc'));
                 $invoice->status = 'factura';
                 break;
                 
@@ -866,7 +823,7 @@ class InvoicesController extends Controller
                         'required',
                         'date',
                         function ($attribute, $value, $fail) use ($invoice) {
-                            if (Carbon::parse($value)->lt(Carbon::parse($invoice->billing_date))) {
+                            if (Carbon::parse($value)->endOfDay()->lte($invoice->billing->created_at)) {
                                 $fail('La fecha de validación debe ser igual o posterior a la fecha de facturación.');
                             }
                         },
@@ -882,7 +839,7 @@ class InvoicesController extends Controller
                 $invoice->f_receipt = $request->input('f');
                 $invoice->validation_date = $request->input('validation_date');
 
-                if($invoice->payment_method == 'PPD'){
+                if($invoice->billing->payment_method == 'PPD'){
                     $invoice->status = 'complemento';
                 } else {
                     $invoice->status = 'finalizada';

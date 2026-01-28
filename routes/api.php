@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Resend\Laravel\Facades\Resend;
@@ -29,7 +30,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 // USUARIOS ADMIN
-Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::apiResource('responsibles', ResponsiblesController::class);
 
@@ -72,6 +73,12 @@ Route::middleware(['auth:sanctum', 'is_admin'])->group(function () {
     Route::apiResource('vehicles', VehiclesController::class);
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
+
+    Route::prefix('admin')->group(function () {
+        Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::post('/users/{user}/change-password', [AdminController::class, 'changeUserPassword']);
+        Route::post('/users/{user}/change-status', [AdminController::class, 'changeUserStatus']);
+    });
 });
 
 // USUARIOS ACTIVOS (NO ADMIN)

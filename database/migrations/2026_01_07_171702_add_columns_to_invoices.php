@@ -18,11 +18,8 @@ return new class extends Migration
             $table->enum('payment_form', ['01', '02', '03', '04', '28', '29', '30', '31', '99'])->nullable()->after('payment_form');
             $table->char('f_receipt', '50')->nullable()->after('payment_form');
             $table->date('billing_date')->nullable()->after('f_receipt');
-            $table->date('validation_date')->nullable()->after('validation_date');
+            $table->date('validation_date')->nullable()->after('billing_date');
             $table->char('uuid_complement', '50')->nullable()->after('validation_date');
-            
-
-
         });
     }
 

@@ -2,19 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\Invoice;
+use Carbon\Carbon;
 use App\Models\Centre;
+use App\Models\Billing;
+use App\Models\Invoice;
 use App\Models\VehicleType;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
     public function saveInvoice(array $fields, ?Invoice $invoice = null)
     {
-
         $centre = Centre::find($fields['vehicles'][0]['centre_id']); // puede ser null si no existe
         $centreId = $centre?->id; // int|null
 
@@ -169,5 +171,90 @@ class InvoiceService
         $invoice->save();
 
         return [$invoice, $pdfContent, $filename];
+    }
+
+    public function saveBilling(array $fields, Collection $invoices, $facturapi)
+    {
+        // Extrayendo info. del cliente
+
+        $invoice = $invoices->first();
+
+        $customer = $invoice->centre->customer;
+
+        // Extrayendo los items de la factura
+        $items = $invoice->rows->map(function ($row) use ($invoice) {
+            $product_key = $row->sat_key_prod_serv ?? $row->service->sat_key_prod_serv;
+            $sat_unit_key = $row->sat_unit_key ?? $row->service->sat_unit_key;
+    
+            if(!$product_key)
+                throw ValidationException::withMessages([
+                    'product_key' => ["El servicio '{$row->concept}' no tiene clave de producto o servicio SAT asignada."],
+                ]);
+
+            if(!$sat_unit_key)
+                throw ValidationException::withMessages([
+                    'sat_unit_key' => ["El servicio '{$row->concept}' no tiene clave de unidad SAT asignada."],
+                ]);
+
+
+            return [
+                'quantity' => $row->quantity,
+                'product' => [
+                    'description' => "$row->concept. $invoice->oc.",   
+                    'product_key' => $product_key,
+                    'price' => (float) $row->price,
+                    "tax_included" => false,
+                    'unit_key' => $sat_unit_key,
+                ],
+            ];
+        })->values()->toArray();
+
+        $sat_invoice = $facturapi->Invoices->create([
+            "customer" => [
+                "legal_name" => $customer->legal_name,
+                // "email" => "email@example.com",
+                "tax_id" => $customer->tax_id,
+                "tax_system" => $customer->tax_system,
+                "address" => [
+                    "zip" => $customer->address_zip,
+                ]
+            ],
+            "items" => $items,
+            "payment_form" => $fields['payment_form'],
+            "payment_method" => $fields['payment_method'],
+            "folio_number" => $invoice->id,
+            "series" => "FACT"
+        ]);     
+        
+        
+        $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
+        $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
+        
+        $fileName = trim("$invoice->id $invoice->oc");
+        
+        $xmlPath = "invoices/sat/fact/xml/$fileName.xml";
+        $pdfPath = "invoices/sat/fact/pdf/$fileName.pdf";
+
+        Storage::put($xmlPath, $xml);
+        Storage::put($pdfPath, $pdf);
+        
+
+        foreach($invoices as $_invoice)
+        {
+            if($_invoice->status == 'factura'){
+                $_invoice->status = 'f';
+                $_invoice->billing_pdf_path = $pdfPath;
+                $_invoice->billing_xml_path = $xmlPath;
+
+                $billing = Billing::create([
+                    'uuid' => trim($sat_invoice->uuid),
+                    'payment_form' => $fields['payment_form'],
+                    'payment_method' => $fields['payment_method'],
+                ]);
+                
+                $_invoice->billing()->associate($billing);
+                $_invoice->save();
+            }
+        }
     }
 }
