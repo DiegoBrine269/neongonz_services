@@ -11,7 +11,7 @@ class AdminController extends Controller
 {
     public function getUsers(Request $request)
     {
-        $users = User::all();
+        $users = User::orderBy('name', 'asc')->orderBy('last_name', 'asc')->get();
 
         return $users;
     }
