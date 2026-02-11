@@ -7,6 +7,7 @@ use App\Models\Centre;
 use App\Models\Billing;
 use App\Models\Invoice;
 use App\Models\VehicleType;
+use App\Models\InvoiceBilling;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +22,6 @@ class InvoiceService
         $centreId = $centre?->id; // int|null
 
         $responsible_id = (int)$fields['responsible_id'] ?? $invoice->responsible_id ?? $centre->responsibles()->first()?->id ?? null;
-
-        
         
         $centre->responsible = $centre->responsibles()->find($responsible_id);
         $date = $fields['date'] ?? today();
@@ -178,8 +177,9 @@ class InvoiceService
         // Extrayendo info. del cliente
 
         $invoice = $invoices->first();
-
         $customer = $invoice->centre->customer;
+
+        $billings_path = config('billings_path');
 
         // Extrayendo los items de la factura
         $items = $invoice->rows->map(function ($row) use ($invoice) {
@@ -209,6 +209,7 @@ class InvoiceService
             ];
         })->values()->toArray();
 
+
         $sat_invoice = $facturapi->Invoices->create([
             "customer" => [
                 "legal_name" => $customer->legal_name,
@@ -224,36 +225,49 @@ class InvoiceService
             "payment_method" => $fields['payment_method'],
             "folio_number" => $invoice->id,
             "series" => "FACT"
-        ]);     
-        
+        ]);             
         
         $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
         $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
         
         $fileName = trim("$invoice->id $invoice->oc");
         
-        $xmlPath = "invoices/sat/fact/xml/$fileName.xml";
-        $pdfPath = "invoices/sat/fact/pdf/$fileName.pdf";
+        $xmlPath = "$billings_path/xml/$fileName.xml";
+        $pdfPath = "$billings_path/pdf/$fileName.pdf";
 
         Storage::put($xmlPath, $xml);
         Storage::put($pdfPath, $pdf);
-        
 
         foreach($invoices as $_invoice)
         {
-            if($_invoice->status == 'factura'){
+            if ($_invoice->status === 'factura') {
                 $_invoice->status = 'f';
-                $_invoice->billing_pdf_path = $pdfPath;
-                $_invoice->billing_xml_path = $xmlPath;
+                $_invoice->save();
 
+                // 1) Crear el Billing (tipo factura)
                 $billing = Billing::create([
                     'uuid' => trim($sat_invoice->uuid),
                     'payment_form' => $fields['payment_form'],
                     'payment_method' => $fields['payment_method'],
+                    'type' => 'factura',
+                    'pdf_path' => "$fileName.pdf",
+                    'xml_path' => "$fileName.xml",
                 ]);
-                
-                $_invoice->billing()->associate($billing);
-                $_invoice->save();
+
+                // 2) Si ya había una factura vinculada, desvincúlala
+                // $oldFactura = $_invoice->billing()->first(); // Billing o null
+                // if ($oldFactura) {
+                //     $_invoice->billings()->detach($oldFactura->id);
+                // }
+
+                // 3) Vincular la nueva factura en la pivote (solo FK)
+                $_invoice->billings()->sync([$billing->id]);
+
+                // 4) Actualizar status si aplica
+                if ($_invoice->status === 'factura') {
+                    $_invoice->status = 'f';
+                    $_invoice->save();
+                }
             }
         }
     }

@@ -124,6 +124,9 @@ return [
     ],
 
     'frontend_url' => env('FRONTEND_URL', 'http://192.168.1.56:5173/'),
+    'billings_path' => env('BILLINGS_BASE_PATH', 'invoices/sat/fact'),
+    'complements_path' => env('COMPLEMENTS_BASE_PATH', 'invoices/sat/comp'),
+
 
 
 ];

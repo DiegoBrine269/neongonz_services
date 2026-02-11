@@ -11,6 +11,8 @@ class Billing extends Model
         'uuid',
         'payment_method',
         'payment_form',
-        'type'
+        'type',
+        'pdf_path',
+        'xml_path',
     ];
 }

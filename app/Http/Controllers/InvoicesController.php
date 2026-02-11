@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\DB;
 use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Requests\StoreInvoiceRequest;
+use App\Http\Requests\UpdateInvoiceRequest;
 use Illuminate\Validation\ValidationException;
+use App\Http\Requests\StoreCustomInvoiceRequest;
 
 class InvoicesController extends Controller
 {
@@ -28,7 +31,7 @@ class InvoicesController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with('centre');
+        $query = Invoice::with(['centre', 'billing', 'complements']);
     
         if ($request->has('filter')) {
             foreach ($request->filter as $filter) {
@@ -234,20 +237,9 @@ class InvoicesController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, InvoiceService $service)
+    public function store(StoreInvoiceRequest $request, InvoiceService $service)
     {    
-        $fields = $request->validate([
-            'vehicles' => 'required|array|min:1',
-            'comments' => 'max:255',
-            'responsible_id' => 'required|exists:responsibles,id',
-        ],[
-            'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
-            'vehicles.array' => 'El formato de los vehículos no es válido.',
-            'vehicles.min' => 'Debes seleccionar al menos un vehículo para la cotización.',
-            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'responsible_id.required' => 'El responsable es obligatorio.',
-            'responsible_id.exists' => 'El responsable seleccionado no existe.',
-        ]);
+        $fields = $request->validated();
         
         $projectVehicleIds = collect($fields['vehicles'])->pluck('id')->toArray();
  
@@ -269,60 +261,10 @@ class InvoicesController extends Controller
             ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
-    public function createCustom(Request $request)
+    public function createCustom(StoreCustomInvoiceRequest $request)
     {
-        $fields = $request->validate([
-            'invoice_id' => 'nullable|exists:invoices,id',
-            'centre_id' => 'required|exists:centres,id',
-            // 'concept' => 'required|string',
-            // 'quantity' => 'required|numeric|min:1',
-            // 'price' => 'required|numeric|min:1',
-            'rows' => 'required|array|min:1',
-            'rows.*.concept' => 'required|string',
-            'rows.*.quantity' => 'required|numeric|min:1',
-            'rows.*.price' => 'required|numeric|min:1',
-            'comments' => 'nullable|string|max:255',
-            'completed' => 'boolean',
-            'internal_commentary' => 'nullable|string|max:255',
-            'date' => 'required|date|before_or_equal:today',
-            'is_budget' => 'boolean',
-            'responsible_id' => 'required|exists:responsibles,id',
-            'rows.*.sat_unit_key' => 'nullable|string|exists:sat_units,key',
-            'rows.*.sat_key_prod_serv' => 'required|string|digits:8',
-            'rows.*.price'=>'required|numeric|min:1',
-            
-        ], [
-            'invoice_id.exists' => 'La cotización que intentas imprimir no existe', 
-            'centre_id.required' => 'El centro es obligatorio.',
-            'centre_id.exists' => 'El centro seleccionado no existe.',
-            'rows.required' => 'Debes agregar al menos una fila a la cotización.',
-            'rows.array' => 'El formato de las filas no es válido.',
-            'rows.min' => 'Debes agregar al menos una fila a la cotización.',
-            'rows.*.concept.required' => 'El concepto es obligatorio en todas las filas.',
-            'rows.*.quantity.required' => 'La cantidad es obligatoria en todas las filas.',
-            'rows.*.price.required' => 'El precio es obligatorio en todas las filas.',
-            'quantity.numeric' => 'La cantidad debe ser un número.',
-            'price.numeric' => 'El precio debe ser un número.',
-            'quantity.min' => 'La cantidad debe ser al menos 1.',
-            'price.min' => 'El precio debe ser al menos 1.',
-            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'completed.boolean' => 'El campo completado debe ser verdadero o falso.',
-            'internal_commentary.max' => 'El comentario debe ser menor a 255 caracteres.',
-            'date.required' => 'La fecha es obligatoria.',
-            'date.date' => 'La fecha no es válida.',
-            'date.before_or_equal' => 'La fecha no puede ser futura.',
-            'is_budget.boolean' => 'El campo tipo debe ser verdadero o falso.',
-            'responsible_id.exists' => 'El responsable seleccionado no existe.',
-            'responsible_id.required' => 'El responsable es obligatorio.',
-            'rows.*.sat_unit_key.exists' => 'Una o más unidades de medida no son válidas.',
-            'rows.*.sat_key_prod_serv.required' => 'La clave de producto o servicio es obligatoria en todas las filas.',
-            'rows.*.sat_key_prod_serv.digits' => 'La clave de producto o servicio debe tener 8 dígitos.',
-            'rows.*.price.required' => 'El precio es obligatorio en todas las filas.',
-            'rows.*.price.numeric' => 'El precio debe ser un número.',
-            'rows.*.price.min' => 'El precio debe ser al menos 1.',
-        ]);
+        $fields = $request->validated();
     
-
     
         // Variables para usar fuera de la transacción
         $invoice = null;
@@ -422,14 +364,6 @@ class InvoicesController extends Controller
         );
 
         return response()->json(['url' => $url], 200);
-
-        // Obtener el contenido del archivo
-        // $fileContent = Storage::get($path);
-
-        // Devolver el archivo como respuesta
-        // return response($fileContent, 200)
-        //     ->header('Content-Type', 'application/pdf')
-        //     ->header('Content-Disposition', 'inline; filename="' . basename($path) . '"');
     }
     
 
@@ -437,32 +371,11 @@ class InvoicesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id, InvoiceService $service)
+    public function update(UpdateInvoiceRequest $request, string $id, InvoiceService $service)
     {
-        $fields = $request->validate([
-            'vehicles' => 'required_unless:completed,false|array|min:1',
-            'date' => 'required|date|before_or_equal:today',
-            'responsible_id' => 'required|exists:responsibles,id',
-            'quantity' => 'sometimes|numeric|min:1',
-            'price' => 'sometimes|numeric|min:1',
-            'concept' => 'sometimes|string',
-            'comments' => 'max:255',
-        ],
-        [
-            'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
-            'vehicles.array' => 'El formato de los vehículos no es válido.',
-            'vehicles.min' => 'Debes seleccionar al menos un vehículo para la cotización.',
-            'date.required' => 'La fecha es obligatoria.',
-            'date.date' => 'La fecha no es válida.',
-            'date.before_or_equal' => 'La fecha no puede ser futura.',
-            'responsible_id.required' => 'El responsable es obligatorio.',
-            'responsible_id.exists' => 'El responsable seleccionado no existe.',
-            'comments.max' => 'El comentario debe ser menor a 255 caracteres.',
-        ]
-        );
+        $fields = $request->validated();
 
         $invoice = Invoice::findOrFail($id);
-
 
         
         if(!empty($fields['vehicles'])){
@@ -646,142 +559,6 @@ class InvoicesController extends Controller
             
     }
 
-    public function createSatInvoice(Request $request, InvoiceService $service)
-    {
-        $fields = $request->validate([
-            'invoice_ids' => 'required|array|min:1',
-            'invoice_ids.*' => 'exists:invoices,id',
-            'joined' => 'boolean|required',
-            'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31,99',
-            'payment_method' => 'required|string|in:PUE,PPD',
-        ], [
-            'invoice_ids.required' => 'Debes seleccionar al menos una factura para generar el CFDI.',
-            'invoice_ids.array' => 'El formato de los IDs de las facturas no es válido.',
-            'invoice_ids.min' => 'Debes seleccionar al menos una factura para generar el CFDI.',
-            'invoice_ids.*.exists' => 'Una o más facturas seleccionadas no existen.',
-            'joined.required' => 'El campo de facturación conjunta es obligatorio.',
-            'joined.boolean' => 'El campo de facturación conjunta debe ser verdadero o falso.',
-            'payment_form.required' => 'La forma de pago es obligatoria.',
-            'payment_form.in' => 'La forma de pago no es válida.',
-            'payment_method.required' => 'El método de pago es obligatorio.',
-            'payment_method.in' => 'El método de pago no es válido.',
-        ]);
-
-
-        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->get();
-
-        foreach($invoices as $invoice) {
-            if (!$invoice || $invoice->status != 'factura') 
-                return response()->json(['error' => 'Factura no encontrada o en estado inválido.'], 404);
-    
-            if(!$invoice->centre->customer)
-                return response()->json(['error' => 'El centro no tiene un cliente SAT asociado.'], 422);
-        }
-
-        $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
-
-        if($fields['joined']){
-            $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
-            $invoices->first()->setRelation('rows', $rowsJoined);
-        }
-
-        $service->saveBilling($fields, $invoices, $facturapi);
-    }
-
-    public function createSatComplement(Request $request)
-    {
-        $fields = $request->validate([
-            'invoice_ids' => 'required|array|min:1',
-            'invoice_ids.*' => 'exists:invoices,id',
-        ], [
-            'invoice_ids.required' => 'Debes seleccionar al menos una factura para generar el CFDI.',
-            'invoice_ids.array' => 'El formato de los IDs de las facturas no es válido.',
-            'invoice_ids.min' => 'Debes seleccionar al menos una factura para generar el CFDI.',
-            'invoice_ids.*.exists' => 'Una o más facturas seleccionadas no existen.',
-        ]);
-
-        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->get();
-
-
-        foreach($invoices as $invoice) {
-            if (!$invoice || $invoice->status != 'complemento') 
-                return response()->json(['error' => 'Factura no encontrada o en estado inválido.'], 404);
-
-            if(!$invoice->centre->customer)
-                return response()->json(['error' => 'El centro no tiene un cliente SAT asociado.'], 422);
-        }
-        
-        $fields = $request->validate([
-            'payment_form' => 'nullable|string|in:01,02,03,04,28,29,30,31',
-        ], [
-            'payment_form.required' => 'La forma de pago es obligatoria.',
-            'payment_form.in' => 'La forma de pago no es válida.',
-        ]);
-
-        $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
-
-        foreach($invoices as $invoice) {
-            // Extrayendo info. del cliente
-            $customer = $invoice->centre->customer;
-
-            $sat_invoice = $facturapi->Invoices->create([
-                'type' => 'P',
-                "customer" => [
-                    "legal_name" => $customer->legal_name,
-                    // "email" => "email@example.com",
-                    "tax_id" => $customer->tax_id,
-                    "tax_system" => $customer->tax_system,
-                    "address" => [
-                        "zip" => $customer->address_zip,
-                    ]
-                ],
-                "complements" => [
-                    [
-                        "type" => "pago",
-                        "data" => [
-                            [
-                                "payment_form" => $fields['payment_form'],
-                                    "related_documents" => [[
-                                            "uuid" => trim($invoice->billing->uuid),
-                                            "amount" => $invoice->total,
-                                            "installment" => 1,
-                                            // "tax_included" => false,
-                                            "last_balance" => $invoice->total,
-                                            "taxes" => [[
-                                                "base" => $invoice->total / 1.16,
-                                                "type" => "IVA",
-                                                "rate" => 0.16
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ],
-                "folio_number" => $invoice->id,
-                "series" => "COMP"
-            ]);
-
-            
-            $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
-            $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
-            
-            $fileName = trim("$invoice->id $invoice->oc");
-            
-            $xmlPath = "invoices/sat/comp/xml/$fileName.xml";
-            $pdfPath = "invoices/sat/comp/pdf/$fileName.pdf";
-
-            Storage::put($xmlPath, $xml);
-            Storage::put($pdfPath, $pdf);
-
-            if($invoice->status == 'complemento'){
-                $invoice->status = 'finalizada';
-                $invoice->billing->payment_form = $fields['payment_form'];
-                $invoice->save();
-            }
-        }
-    }
 
 
     public function showUnits()

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\AdminController;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Resend\Laravel\Facades\Resend;
@@ -9,10 +8,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Password;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CentresController;
+use App\Http\Controllers\BillingsController;
 use App\Http\Controllers\InvoicesController;
-use App\Http\Controllers\ProjectsController;
 
+use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\VehiclesController;
 use App\Http\Controllers\CustomersController;
@@ -48,8 +49,8 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         Route::get('/pending', [InvoicesController::class, 'pending']);
         Route::get('/email-pending', [InvoicesController::class, 'emailPending']);
         Route::post('/create-custom', [InvoicesController::class, 'createCustom']);
-        Route::post('/create-sat-invoice', [InvoicesController::class, 'createSatInvoice']);
-        Route::post('/create-sat-complement', [InvoicesController::class, 'createSatComplement']);
+        Route::post('/create-sat-invoice', [BillingsController::class, 'store']);
+        Route::post('/create-sat-complement', [BillingsController::class, 'storeComplement']);
 
         // catálogos
         Route::get('/units', [InvoicesController::class, 'showUnits']);
@@ -57,15 +58,14 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         // invoice-specific
         Route::put('/{invoice}/update-status', [InvoicesController::class, 'updateStatus'])->whereNumber('invoice');
         Route::get('/{invoice}/pdf', [InvoicesController::class, 'downloadPdf'])->whereNumber('invoice');
-
-
     });
 
     // resource al final
     Route::resource('invoices', InvoicesController::class)
         ->except(['create', 'edit']);
 
-
+    Route::get('/billings/{id}/download', [BillingsController::class, 'download'])->whereNumber('id');
+    
     //Customers
     Route::apiResource('customers', CustomersController::class);
 

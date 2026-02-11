@@ -54,14 +54,34 @@ class Invoice extends Model
         return $this->hasMany(InvoiceRow::class);
     }
 
-    public function billing()
+    
+    public function billing() // mejor: factura()
     {
-        return $this->belongsTo(Billing::class, 'billing_id');
+        return $this->hasOneThrough(
+            Billing::class,
+            InvoiceBilling::class,
+            'invoice_id', // FK en invoice_billings que apunta a invoices.id
+            'id',         // PK en billings
+            'id',         // PK local en invoices
+            'billing_id'  // FK en invoice_billings que apunta a billings.id
+        )->where('billings.type', 'factura');
     }
 
-    public function complement()
+    public function billings()
     {
-        return $this->belongsTo(Billing::class, 'complement_id');
+        return $this->belongsToMany(Billing::class, 'invoice_billings')->withTimestamps();
+    }
+
+    public function complements()
+    {
+        return $this->hasManyThrough(
+            Billing::class,
+            InvoiceBilling::class,
+            'invoice_id',
+            'id',
+            'id',
+            'billing_id'
+        )->where('billings.type', 'complemento');
     }
 
 }
