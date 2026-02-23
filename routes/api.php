@@ -48,9 +48,9 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         Route::post('/send', [InvoicesController::class, 'send']);
         Route::get('/pending', [InvoicesController::class, 'pending']);
         Route::get('/email-pending', [InvoicesController::class, 'emailPending']);
-        Route::post('/create-custom', [InvoicesController::class, 'createCustom']);
-        Route::post('/create-sat-invoice', [BillingsController::class, 'store']);
-        Route::post('/create-sat-complement', [BillingsController::class, 'storeComplement']);
+        Route::post('/custom', [InvoicesController::class, 'createCustom']);
+        Route::post('/sat-invoice', [BillingsController::class, 'store']);
+        Route::post('/sat-complement', [BillingsController::class, 'storeComplement']);
 
         // catálogos
         Route::get('/units', [InvoicesController::class, 'showUnits']);
