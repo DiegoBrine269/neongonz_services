@@ -22,11 +22,15 @@ class StoreComplementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'invoice_ids' => 'required|array|min:1',
-            'invoice_ids.*' => 'exists:invoices,id',
+            // 'invoice_ids' => 'required|array|min:1',
+            // 'invoice_ids.*' => 'exists:invoices,id',
+            // 'payment_amounts.*' => 'numeric|min:1',
+            'data' => 'required|array|min:1',
+            'data.*.id' => 'required|exists:billings,id',
+            'data.*.amount' => 'required|numeric|min:1',
             'payment_date' => 'required|date|before_or_equal:today',
-            'payment_amount' => 'numeric|min:1',
             'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31',
+            'customer_id' => 'required|exists:customers,id',
         ];
     }
 
@@ -44,6 +48,8 @@ class StoreComplementRequest extends FormRequest
             'payment_amount.min' => 'El monto de pago debe ser al menos 1.',
             'payment_form.required' => 'La forma de pago es obligatoria.',
             'payment_form.in' => 'La forma de pago no es válida.',
+            'customer_id.required' => 'El cliente es obligatorio.',
+            'customer_id.exists' => 'El cliente seleccionado no existe.',
         ];
     }
 }

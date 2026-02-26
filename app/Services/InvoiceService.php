@@ -16,6 +16,13 @@ use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
+    private $billings_path;
+
+    public function __construct() {
+        $this->billings_path = config('app.billings_path');
+    }
+
+
     public function saveInvoice(array $fields, ?Invoice $invoice = null)
     {
         $centre = Centre::find($fields['vehicles'][0]['centre_id']); // puede ser null si no existe
@@ -179,37 +186,76 @@ class InvoiceService
         $invoice = $invoices->first();
         $customer = $invoice->centre->customer;
 
-        $billings_path = config('billings_path');
+
+        // Variable que indica si solo se debe crear una factura
+        $createOnce = false;
+
+        // dump($fields);
+
+        if($fields['joined']){
+            // $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
+            // $invoice->setRelation('rows', $rowsJoined);
+            // $invoices = Collection::make([$invoices]);
+
+            $createOnce = true;
+        }
+
 
         // Extrayendo los items de la factura
-        $items = $invoice->rows->map(function ($row) use ($invoice) {
-            $product_key = $row->sat_key_prod_serv ?? $row->service->sat_key_prod_serv;
-            $sat_unit_key = $row->sat_unit_key ?? $row->service->sat_unit_key;
+
+        
+        $billings = [];
+
+        foreach($invoices as $_invoice)
+        {
+            if ($_invoice->status === 'factura') {
+                $_invoice->status = 'f';
+                $_invoice->save();
+
+                // 1) Crear el Billing (tipo factura)
+                if(!$createOnce){
+                    // dump($_invoice);
+                    $items = $this->extractItems(new Collection([$_invoice]), $fields['joined']);
+                    $billing = $this->createBilling($facturapi, $customer, $fields, $_invoice, $items);
+
+
+                    // 2) Si ya había una factura vinculada, desvincúlala
+                    $_invoice->billings()->sync([$billing->id]);
     
-            if(!$product_key)
-                throw ValidationException::withMessages([
-                    'product_key' => ["El servicio '{$row->concept}' no tiene clave de producto o servicio SAT asignada."],
-                ]);
+                    // 3) Actualizar status si aplica
+                    if ($_invoice->status === 'factura') {
+                        $_invoice->status = 'f';
+                        $_invoice->save();
+                    }
+    
+                    $billings[] = $billing;
+                }
+            }
+        }
 
-            if(!$sat_unit_key)
-                throw ValidationException::withMessages([
-                    'sat_unit_key' => ["El servicio '{$row->concept}' no tiene clave de unidad SAT asignada."],
-                ]);
+        if($createOnce){
+            $items = $this->extractItems($invoices, $fields['joined']);
+            $billing = $this->createBilling($facturapi, $customer, $fields, $invoice, $items);
 
+            // $invoice->billings()->sync([$billing->id]);
+            $invoices->each(function ($inv) use ($billing) {
+                $inv->billings()->sync([$billing->id]);
+            });
 
-            return [
-                'quantity' => $row->quantity,
-                'product' => [
-                    'description' => "$row->concept. $invoice->oc.",   
-                    'product_key' => $product_key,
-                    'price' => (float) $row->price,
-                    "tax_included" => false,
-                    'unit_key' => $sat_unit_key,
-                ],
-            ];
-        })->values()->toArray();
+            // 3) Actualizar status si aplica
+            if ($invoice->status === 'factura') {
+                $invoice->status = 'f';
+                $invoice->save();
+            }
 
+            $billings[] = $billing;
+        }
 
+        return $billings;
+    }
+
+    private function createBilling($facturapi, $customer, $fields, $invoice, $items)
+    {
         $sat_invoice = $facturapi->Invoices->create([
             "customer" => [
                 "legal_name" => $customer->legal_name,
@@ -223,52 +269,85 @@ class InvoiceService
             "items" => $items,
             "payment_form" => $fields['payment_form'],
             "payment_method" => $fields['payment_method'],
-            "folio_number" => $invoice->id,
+            // "folio_number" => $invoice->id,
             "series" => "FACT"
-        ]);             
+        ]);    
         
         $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
         $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
         
-        $fileName = trim("$invoice->id $invoice->oc");
+        // dump($sat_invoice);
+
+        $folio = $sat_invoice->folio_number;
+        $fileName = "FACT".trim("$folio") . " " . trim($invoice->oc);
+        // $fileName = trim("$invoice->id $invoice->oc");
         
-        $xmlPath = "$billings_path/xml/$fileName.xml";
-        $pdfPath = "$billings_path/pdf/$fileName.pdf";
+        $xmlPath = "$this->billings_path/xml/$fileName.xml";
+        $pdfPath = "$this->billings_path/pdf/$fileName.pdf";
 
         Storage::put($xmlPath, $xml);
         Storage::put($pdfPath, $pdf);
 
-        foreach($invoices as $_invoice)
-        {
-            if ($_invoice->status === 'factura') {
-                $_invoice->status = 'f';
-                $_invoice->save();
+        //Sumando el total de los items para guardarlo en la BD
+        $total = collect($items)->sum(function ($item) {
+            return $item['quantity'] * $item['product']['price'] * 1.16;
+        });
 
-                // 1) Crear el Billing (tipo factura)
-                $billing = Billing::create([
-                    'uuid' => trim($sat_invoice->uuid),
-                    'payment_form' => $fields['payment_form'],
-                    'payment_method' => $fields['payment_method'],
-                    'type' => 'factura',
-                    'pdf_path' => "$fileName.pdf",
-                    'xml_path' => "$fileName.xml",
+        $billing = Billing::create([
+            'uuid' => trim($sat_invoice->uuid),
+            'folio_number' => $folio,
+            'payment_form' => $fields['payment_form'],
+            'payment_method' => $fields['payment_method'],
+            'total' => $total,
+            'type' => 'factura',
+            'pdf_path' => "$fileName.pdf",
+            'xml_path' => "$fileName.xml",
+        ]);
+
+        return $billing;
+    }
+
+    private function extractItems(Collection $invoices, $joined)
+    {
+        $invoice = $invoices->first();
+
+        if($joined){
+            $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
+            $invoice->setRelation('rows', $rowsJoined);
+        }
+
+
+        $items = $invoice->rows->map(function ($row) use ($invoices, $joined) {
+            $product_key = $row->sat_key_prod_serv ?? $row->service->sat_key_prod_serv;
+            $sat_unit_key = $row->sat_unit_key ?? $row->service->sat_unit_key;
+    
+            if(!$product_key)
+                throw ValidationException::withMessages([
+                    'product_key' => ["El servicio '{$row->concept}' no tiene clave de producto o servicio SAT asignada."],
                 ]);
 
-                // 2) Si ya había una factura vinculada, desvincúlala
-                // $oldFactura = $_invoice->billing()->first(); // Billing o null
-                // if ($oldFactura) {
-                //     $_invoice->billings()->detach($oldFactura->id);
-                // }
+            if(!$sat_unit_key)
+                throw ValidationException::withMessages([
+                    'sat_unit_key' => ["El servicio '{$row->concept}' no tiene clave de unidad SAT asignada."],
+                ]);
 
-                // 3) Vincular la nueva factura en la pivote (solo FK)
-                $_invoice->billings()->sync([$billing->id]);
+            // dump($row);
 
-                // 4) Actualizar status si aplica
-                if ($_invoice->status === 'factura') {
-                    $_invoice->status = 'f';
-                    $_invoice->save();
-                }
-            }
-        }
+            // La OC se debe extraer de la invoice en particular, ya que este dato no es común (solo en caso de joined)
+            $oc = $joined ? $invoices->firstWhere('id', $row->invoice_id)?->oc : $invoices->first()?->oc;
+
+            return [
+                'quantity' => $row->quantity,
+                'product' => [
+                    'description' => "$row->concept. $oc.",   
+                    'product_key' => $product_key,
+                    'price' => (float) $row->price,
+                    "tax_included" => false,
+                    'unit_key' => $sat_unit_key,
+                ],
+            ];
+        })->values()->toArray();
+
+        return $items;
     }
 }

@@ -38,8 +38,6 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
     
     Route::get('/users/{id}/performance', [UserController::class, 'performance']);
 
-
-
     Route::post('/projects/{id}/toggle-status', [ProjectsController::class, 'toggleStatus']);
 
     Route::prefix('invoices')->group(function () {
@@ -49,8 +47,9 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         Route::get('/pending', [InvoicesController::class, 'pending']);
         Route::get('/email-pending', [InvoicesController::class, 'emailPending']);
         Route::post('/custom', [InvoicesController::class, 'createCustom']);
-        Route::post('/sat-invoice', [BillingsController::class, 'store']);
-        Route::post('/sat-complement', [BillingsController::class, 'storeComplement']);
+
+        Route::post('/billings', [BillingsController::class, 'store']);
+
 
         // catálogos
         Route::get('/units', [InvoicesController::class, 'showUnits']);
@@ -61,14 +60,16 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
     });
 
     // resource al final
-    Route::resource('invoices', InvoicesController::class)
-        ->except(['create', 'edit']);
+    Route::apiResource('invoices', InvoicesController::class);
 
-    Route::get('/billings/{id}/download', [BillingsController::class, 'download'])->whereNumber('id');
-    
-    //Customers
+    Route::prefix('billings')->group(function () {
+        Route::post('/sat-billing', [BillingsController::class, 'store']);
+        Route::post('/sat-complement', [BillingsController::class, 'storeComplement']);
+        // Route::get('/billings/{id}/download', [BillingsController::class, 'download'])->whereNumber('id');
+    });
+    Route::apiResource('billings', BillingsController::class);
+
     Route::apiResource('customers', CustomersController::class);
-
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class);
     Route::apiResource('services', ServicesController::class);

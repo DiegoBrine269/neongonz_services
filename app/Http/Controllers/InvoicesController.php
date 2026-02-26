@@ -34,6 +34,18 @@ class InvoicesController extends Controller
         $query = Invoice::with(['centre', 'billing', 'complements']);
     
         if ($request->has('filter')) {
+
+            // Esto se aplica para cuando son múltiples OC
+            $ocs = collect($request->filter ?? [])
+                ->where('field', 'oc')
+                ->pluck('value')
+                ->unique()
+                ->values();
+
+            if ($ocs->count() > 1) {
+                $query->whereIn('oc', $ocs);
+            }
+
             foreach ($request->filter as $filter) {
                 if (isset($filter['field'], $filter['type'], $filter['value'])) {
     
@@ -49,19 +61,24 @@ class InvoicesController extends Controller
                         } catch (\Exception $e) {
                             continue; // Ignorar si la fecha no se puede convertir
                         }
-                    }
-    
-                    elseif ($field === 'centre') {
+                    } elseif ($field === 'oc' && $ocs->count() <= 1) {
+                        if ($type === 'like') {
+                            $query->where('oc', 'like', '%' . $value . '%');
+                        } elseif ($type === '=') {
+                            $query->where('oc', '=', $value);
+                        }
+
+                    } elseif ($field === 'centre') {
                         $query->whereHas('centre', function ($q) use ($type, $value) {
                             if ($type === 'like') {
-                                $q->where('name', 'ilike', '%' . $value . '%');
+                                $q->where('name', 'like', '%' . $value . '%');
                             } elseif ($type === '=') {
                                 $q->where('name', '=', $value);
                             }
                         });
                     } elseif (in_array($field, ['date', 'invoice_number'])) {
                         if ($type === 'like') {
-                            $query->where($field, 'ilike', '%' . $value . '%');
+                            $query->where($field, 'like', '%' . $value . '%');
                         } elseif ($type === '=') {
                             $query->where($field, '=', $value);
                         }
@@ -95,6 +112,7 @@ class InvoicesController extends Controller
                 $q->where('sent_at', request('sent_at'))
             );
     
+
         $invoices = $query->where('completed', true)->orderBy('updated_at', 'desc');
 
         $shouldPaginate = filter_var($request->query('paginate', true), FILTER_VALIDATE_BOOLEAN);
@@ -556,7 +574,6 @@ class InvoicesController extends Controller
         ]);
 
         return true;
-            
     }
 
 
