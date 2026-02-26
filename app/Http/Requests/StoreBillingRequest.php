@@ -24,7 +24,7 @@ class StoreBillingRequest extends FormRequest
         return [
             'invoice_ids' => 'required|array|min:1',
             'invoice_ids.*' => 'exists:invoices,id',
-            'joined' => 'boolean|required',
+            'joined' => 'boolean|nullable',
             'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31,99',
             'payment_method' => 'required|string|in:PUE,PPD',
         ];
