@@ -191,9 +191,45 @@ class VehiclesController extends Controller
 
     }
 
-    public function types()
+    public function getTypes()
     {
-        $types = DB::table('vehicles_types')->select(['id', 'type'])->orderBy('order')->get();
-        return $types;
+        $types = DB::table('vehicles_types')->select(['id', 'type', 'order'])->orderBy('order')->get();
+        return response()->json($types);
+    }
+
+    public function storeType(Request $request)
+    {
+        $fields = $request->validate([
+            'type' => 'required|string|unique:vehicles_types,type',
+        ], [
+            'type.required' => 'El campo tipo es obligatorio',
+            'type.string' => 'El campo tipo debe ser una cadena de texto',
+            'type.unique' => 'Ya existe un tipo de vehículo con ese nombre',
+        ]);
+
+        $maxOrder = DB::table('vehicles_types')->max('order');
+        $newType = DB::table('vehicles_types')->insertGetId([
+            'type' => $fields['type'],
+            'order' => $maxOrder + 1,
+        ]);
+
+        return response()->json(['id' => $newType, 'type' => $fields['type']], 201);        
+    }
+
+    public function updateType(Request $request, $id)
+    {
+        $fields = $request->validate([
+            'type' => 'required|string|unique:vehicles_types,type,' . $id,
+            'order' => 'nullable|integer'
+        ], [
+            'type.required' => 'El campo tipo es obligatorio',
+            'type.string' => 'El campo tipo debe ser una cadena de texto',
+            'type.unique' => 'Ya existe un tipo de vehículo con ese nombre',
+            'order.integer' => 'El campo orden debe ser un número entero',
+        ]);
+
+        DB::table('vehicles_types')->where('id', $id)->update($fields);
+
+        return response()->json(['id' => $id, 'type' => $fields['type']], 200);
     }
 }

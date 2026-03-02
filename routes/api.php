@@ -71,7 +71,7 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
 
     Route::apiResource('customers', CustomersController::class);
     Route::apiResource('centres', CentresController::class);
-    Route::apiResource('vehicles', VehiclesController::class);
+    Route::apiResource('vehicles', VehiclesController::class)->whereNumber('vehicle');
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
 
@@ -91,8 +91,10 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
 
     //Extras de vehículos
-    Route::get('/vehicles-types', [VehiclesController::class, 'types']);
-    // Route::get('/vehicles', [VehiclesController::class, 'types']);
+    Route::get('/vehicles/types', [VehiclesController::class, 'getTypes']);
+    Route::post('/vehicles/types', [VehiclesController::class, 'storeType']);
+    Route::put('/vehicles/types/{id}', [VehiclesController::class, 'updateType']);
+
 
 
     //Extras de proyectos
