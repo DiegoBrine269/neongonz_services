@@ -155,6 +155,7 @@ class BillingsController extends Controller
             ]
         ];
 
+
         $total_paid_amount = $items->sum('amount');
         $total_last_balance = $billings->sum('total' );
 

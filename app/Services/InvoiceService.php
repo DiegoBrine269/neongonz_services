@@ -254,7 +254,7 @@ class InvoiceService
                 "legal_name" => $customer->legal_name,
                 // "email" => "email@example.com",
                 "tax_id" => $customer->tax_id,
-                "tax_system" => $customer->tax_system,
+                "tax_system" => intval($customer->tax_system),
                 "address" => [
                     "zip" => $customer->address_zip,
                 ]
