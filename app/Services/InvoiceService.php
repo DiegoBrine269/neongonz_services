@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
-use App\Models\Centre;
 use App\Models\Billing;
+use App\Models\Centre;
 use App\Models\Invoice;
-use App\Models\VehicleType;
 use App\Models\InvoiceBilling;
+use App\Models\VehicleType;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -249,12 +250,13 @@ class InvoiceService
 
     private function createBilling($facturapi, $customer, $fields, $invoice, $items)
     {
+        Log::info($customer->toArray()); 
         $sat_invoice = $facturapi->Invoices->create([
             "customer" => [
                 "legal_name" => $customer->legal_name,
                 // "email" => "email@example.com",
                 "tax_id" => $customer->tax_id,
-                "tax_system" => intval($customer->tax_system),
+                "tax_system" => $customer->tax_system,
                 "address" => [
                     "zip" => $customer->address_zip,
                 ]
