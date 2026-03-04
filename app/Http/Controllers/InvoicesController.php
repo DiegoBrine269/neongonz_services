@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Centre;
-use App\Models\Billing;
-use App\Models\Invoice;
-use App\Models\Project;
-use Facturapi\Facturapi;
-use App\Models\Responsible;
-use App\Models\VehicleType;
-use Illuminate\Http\Request;
-use App\Models\InvoiceVehicle;
-use App\Models\ProjectVehicle;
-use Illuminate\Support\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\InvoiceService;
-use Illuminate\Support\Facades\DB;
-use Resend\Laravel\Facades\Resend;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
+use App\Http\Requests\StoreCustomInvoiceRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
+use App\Models\Billing;
+use App\Models\Centre;
+use App\Models\Invoice;
+use App\Models\InvoiceVehicle;
+use App\Models\Project;
+use App\Models\ProjectVehicle;
+use App\Models\Responsible;
+use App\Models\VehicleType;
+use App\Services\InvoiceService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Facturapi\Facturapi;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use App\Http\Requests\StoreCustomInvoiceRequest;
+use Resend\Laravel\Facades\Resend;
 
 class InvoicesController extends Controller
 {
@@ -237,6 +238,8 @@ class InvoicesController extends Controller
                 foreach ($invoicesGroup as $invoice) {
                     $invoice->sent_at = null;
                     $invoice->save();
+
+                    
                 }
                 //Retornar mensaje de error si no se pudo enviar el correo
                 return response()->json(['error' => "No se pudo enviar el correo a {$centre->name}. Verifica que el correo electrónico esté configurado correctamente."], 500); 
@@ -563,16 +566,25 @@ class InvoicesController extends Controller
         if (app()->environment('local')) 
             $subject = "[CORREO DE PRUEBA] " . $subject;
 
-        Resend::emails()->send([
-            'from' => "Neón Gonz <$from>",
-            'to' => [$email],
-            'cc' => ['neongonz@hotmail.com'],
-            'subject' => $subject,
-            'reply_to' => 'neongonz@hotmail.com',
-            'html' => $html,
-            'attachments' => $attachments,
-        ]);
+        try {
+            $email = Resend::emails()->send([
+                'from' => "Neón Gonz <$from>",
+                'to' => [$email],
+                'cc' => ['neongonz@hotmail.com'],
+                'subject' => $subject,
+                'reply_to' => 'neongonz@hotmail.com',
+                'html' => $html,
+                'attachments' => $attachments,
+            ]);
+        }
+        catch (\Exception $e) {
+            Log::error("Error al enviar correo: " . $e->getMessage());
+            return false;
+        }
 
+        // $email =Resend::emails()->get($email->id);
+
+        // dump($email);
         return true;
     }
 

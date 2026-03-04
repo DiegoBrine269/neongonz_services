@@ -193,10 +193,6 @@ class InvoiceService
         // dump($fields);
 
         if($fields['joined']){
-            // $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
-            // $invoice->setRelation('rows', $rowsJoined);
-            // $invoices = Collection::make([$invoices]);
-
             $createOnce = true;
         }
 
@@ -209,8 +205,6 @@ class InvoiceService
         foreach($invoices as $_invoice)
         {
             if ($_invoice->status === 'factura') {
-                $_invoice->status = 'f';
-                $_invoice->save();
 
                 // 1) Crear el Billing (tipo factura)
                 if(!$createOnce){
@@ -222,11 +216,10 @@ class InvoiceService
                     // 2) Si ya había una factura vinculada, desvincúlala
                     $_invoice->billings()->sync([$billing->id]);
     
-                    // 3) Actualizar status si aplica
-                    if ($_invoice->status === 'factura') {
-                        $_invoice->status = 'f';
-                        $_invoice->save();
-                    }
+                    // 3) Actualizar status
+                    $_invoice->status = 'f';
+                    $_invoice->save();
+                
     
                     $billings[] = $billing;
                 }
@@ -275,8 +268,6 @@ class InvoiceService
         
         $pdf = $facturapi->Invoices->download_pdf($sat_invoice->id);
         $xml = $facturapi->Invoices->download_xml($sat_invoice->id);
-        
-        // dump($sat_invoice);
 
         $folio = $sat_invoice->folio_number;
         $fileName = "FACT".trim("$folio") . " " . trim($invoice->oc);
@@ -310,6 +301,7 @@ class InvoiceService
     private function extractItems(Collection $invoices, $joined)
     {
         $invoice = $invoices->first();
+        $invoiceMap = $invoices->keyBy('id');
 
         if($joined){
             $rowsJoined = $invoices->flatMap(fn ($inv) => $inv->rows)->values();
@@ -317,7 +309,7 @@ class InvoiceService
         }
 
 
-        $items = $invoice->rows->map(function ($row) use ($invoices, $joined) {
+        $items = $invoice->rows->map(function ($row) use ($invoices, $invoice, $joined, $invoiceMap) {
             $product_key = $row->sat_key_prod_serv ?? $row->service->sat_key_prod_serv;
             $sat_unit_key = $row->sat_unit_key ?? $row->service->sat_unit_key;
     
@@ -334,7 +326,9 @@ class InvoiceService
             // dump($row);
 
             // La OC se debe extraer de la invoice en particular, ya que este dato no es común (solo en caso de joined)
-            $oc = $joined ? $invoices->firstWhere('id', $row->invoice_id)?->oc : $invoices->first()?->oc;
+            $oc = $joined
+                ? $invoiceMap[$row->invoice_id]?->oc
+                : $invoice->oc;
 
             return [
                 'quantity' => $row->quantity,

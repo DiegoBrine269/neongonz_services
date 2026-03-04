@@ -14,6 +14,7 @@ use Facturapi\Facturapi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\HttpCache\Store;
 use ZipArchive;
 
@@ -43,7 +44,9 @@ class BillingsController extends Controller
     {
         $fields = $request->validated();
 
-        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->get();
+        $invoices = Invoice::with(['billings', 'centre.customer', 'rows.service'])
+            ->whereIn('id', $fields['invoice_ids'])
+            ->get();
 
         if (!array_key_exists('joined', $fields)) {
             $fields['joined'] = false;
@@ -56,20 +59,32 @@ class BillingsController extends Controller
 
         foreach($invoices as $invoice) {
             if (!$invoice || $invoice->status != 'factura') 
-                return response()->json(['error' => 'Factura no encontrada o en estado inválido.'], 404);
+                throw ValidationException::withMessages([
+                    'error' => ["Factura con ID {$invoice->id} no encontrada o en estado inválido."],
+                ]);
     
             if(!$invoice->centre->customer)
-                return response()->json(['error' => 'El centro no tiene un cliente SAT asociado.'], 422);
+                throw ValidationException::withMessages([
+                    'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
+                ]);
+        
         }
 
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
 
-        $billings = $service->saveBilling($fields, $invoices, $facturapi);
+        try {
+            $billings = $service->saveBilling($fields, $invoices, $facturapi);
 
-        // dump($billings);
+        } catch (\Exception $e) {
+                throw ValidationException::withMessages([
+                    'error' => [$e->getMessage()],
+                ]);
+        }    
+
 
         // Enviando correo de notificación
-        $responsiblePerson = Responsible::find($invoice->responsible_id);
+        $firstInvoice = $invoices->first();
+        $responsiblePerson = Responsible::find($firstInvoice->responsible_id);
 
         $attachments = [];
         foreach($billings as $billing) {
@@ -77,7 +92,6 @@ class BillingsController extends Controller
 
             $pdfContent = Storage::get(config('app.billings_path') . "/pdf/" . $billing->pdf_path);
             $xmlContent = Storage::get(config('app.billings_path') . "/xml/" . $billing->xml_path);
-
 
             $attachments[] = [
                 'filename' => $billing->pdf_path,
@@ -102,7 +116,6 @@ class BillingsController extends Controller
         $html = view('emails/billing', [
             'to' => $responsiblePerson->name,
             'list' => $list,
-
         ])->render();
 
 
@@ -117,8 +130,6 @@ class BillingsController extends Controller
     {
         $fields = $request->validated();
 
-        // dump($fields);
-
         $ids = array_map(fn($item) => $item['id'], $fields['data']);
         $billings = Billing::whereIn('id', $ids)->get();
         $invoices = Invoice::whereHas('billings', fn($query) => $query->whereIn('billings.id', $ids))->get();
@@ -127,12 +138,6 @@ class BillingsController extends Controller
 
         foreach($billings as $billing) {
             $billing->paid_amount = $items->firstWhere('id', $billing->id)['amount'] ?? $billing->total;
-            
-            // if (!$billings || $billings->status != 'complemento') 
-            //     return response()->json(['error' => 'Factura no encontrada o en estado inválido.'], 404);
-
-            // if(!$billings->centre->customer)
-            //     return response()->json(['error' => 'El centro no tiene un cliente SAT asociado.'], 422);
         }
 
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
@@ -177,11 +182,13 @@ class BillingsController extends Controller
         $sat_comp = $facturapi->Invoices->create([
             'type' => 'P',
             "customer" => $customer_object,
-            "date" => $fields['payment_date'],
+            // "date" => $fields['payment_date'],
             "complements" => [
                 [
+                    
                     "type" => "pago",
                     "data" => [[
+                        "date" => $fields['payment_date'],
                         "payment_form" => $fields['payment_form'],
                         "related_documents" => $related_documents
                     ]]
@@ -249,8 +256,9 @@ class BillingsController extends Controller
                         "type" => "pago",
                         "data" => [
                             [
+                                "date" => $fields['payment_date'],                        
                                 "payment_form" => "17",
-                                    "related_documents" => $related_documents,
+                                "related_documents" => $related_documents,
                             ]
                         ]
                     ]
