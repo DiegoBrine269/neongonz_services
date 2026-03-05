@@ -67,7 +67,6 @@ class BillingsController extends Controller
                 throw ValidationException::withMessages([
                     'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
                 ]);
-        
         }
 
         $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
@@ -81,8 +80,6 @@ class BillingsController extends Controller
                 ]);
         }    
 
-
-        // Enviando correo de notificación
         $firstInvoice = $invoices->first();
         $responsiblePerson = Responsible::find($firstInvoice->responsible_id);
 
@@ -304,46 +301,66 @@ class BillingsController extends Controller
     {
         $billing = Billing::find($id);
 
-        $billings_path = config('app.billings_path');
-        $complements_path = config('app.complements_path');
-
-        if(!$billing) 
+        if (!$billing)
             return response()->json(['error' => 'Facturación no encontrada.'], 404);
 
+        $billings_path = config('app.billings_path');
+        $complements_path = config('app.complements_path');
         $base_path = $billing->type == 'factura' ? $billings_path : $complements_path;
 
         $pdf_path = "$base_path/pdf/{$billing->pdf_path}";
         $xml_path = "$base_path/xml/{$billing->xml_path}";
 
-        if (!Storage::exists($pdf_path) || !Storage::exists($xml_path)) 
+        if (!Storage::exists($pdf_path) || !Storage::exists($xml_path))
             return response()->json(['error' => 'Archivos no encontrados.'], 404);
-        
 
-        $zip = new ZipArchive();
+        // Verificar que la extensión zip esté disponible
+        if (!class_exists('ZipArchive'))
+            return response()->json(['error' => 'Extensión ZIP no disponible en el servidor.'], 500);
+
         $type = $billing->type == 'factura' ? 'FACT' : 'COMP';
         $zipFileName = "SAT {$type}{$billing->folio_number}.zip";
-        $tempPath = storage_path("temp/{$zipFileName}");
 
-        // Create temp directory if it doesn't exist
-        if (!file_exists(storage_path('temp'))) {
-            mkdir(storage_path('temp'), 0755, true);
+        // Usar sys_get_temp_dir() es más seguro en producción
+        $tempDir = storage_path('temp');
+        $tempPath = "{$tempDir}/{$zipFileName}";
+
+        // Crear directorio temp con manejo de errores
+        if (!file_exists($tempDir)) {
+            if (!mkdir($tempDir, 0775, true)) {
+                return response()->json(['error' => 'No se pudo crear directorio temporal.'], 500);
+            }
         }
 
-        // Create and populate zip file
-        if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            $pdfFullPath = Storage::path($pdf_path);
-            $xmlFullPath = Storage::path($xml_path);
+        // Verificar que el directorio sea escribible
+        if (!is_writable($tempDir)) {
+            return response()->json(['error' => 'Directorio temporal sin permisos de escritura.'], 500);
+        }
 
-            $zip->addFile($pdfFullPath, basename($billing->pdf_path));
-            $zip->addFile($xmlFullPath, basename($billing->xml_path));
+        $zip = new ZipArchive();
+
+        if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE)
+            return response()->json(['error' => 'No se pudo abrir el archivo ZIP.'], 500);
+
+        $pdfFullPath = Storage::path($pdf_path);
+        $xmlFullPath = Storage::path($xml_path);
+
+        // Verificar que los archivos físicamente existan
+        if (!file_exists($pdfFullPath) || !file_exists($xmlFullPath)) {
             $zip->close();
-
-            return response()->download($tempPath, $zipFileName, [
-                'Content-Type' => 'application/zip',
-            ])->deleteFileAfterSend(true);
+            return response()->json(['error' => 'Archivos físicos no encontrados.'], 404);
         }
 
-          response()->json(['error' => 'Error al crear el archivo comprimido.'], 500);
+        $zip->addFile($pdfFullPath, basename($billing->pdf_path));
+        $zip->addFile($xmlFullPath, basename($billing->xml_path));
+        $zip->close();
+
+        if (!file_exists($tempPath))
+            return response()->json(['error' => 'El ZIP no fue generado correctamente.'], 500);
+
+        return response()->download($tempPath, $zipFileName, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
