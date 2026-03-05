@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCustomInvoiceRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
+use App\Jobs\SendInvoicesJob;
 use App\Models\Billing;
 use App\Models\Centre;
 use App\Models\Invoice;
@@ -160,8 +161,6 @@ class InvoicesController extends Controller
 
     public function send(Request $request)
     {
-
-        // Si es un solo int, conviértelo a array
         if (is_numeric($request->invoice_ids)) {
             $request->merge(['invoice_ids' => [(int)$request->invoice_ids]]);
         }
@@ -176,82 +175,17 @@ class InvoicesController extends Controller
             'invoice_ids.*.exists' => 'Una o más cotizaciones seleccionadas no existen.',
         ]);
 
-        // Obtener los invoices
         $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->pluck('is_budget');
 
-        // Validar que todos los valores de is_budget sean iguales, NO SE PUEDEN ENVIAR COTIZACIONES Y PRESUPUESTOS JUNTOS
         if ($invoices->unique()->count() > 1) {
             return response()->json([
                 'error' => 'No puedes enviar cotizaciones y presupuestos juntos. Selecciona solo un tipo.'
             ], 422);
         }
 
-        $invoices = Invoice::with('centre')
-            ->whereIn('id', $fields['invoice_ids'])
-            ->get();
+        SendInvoicesJob::dispatch($fields['invoice_ids']);
 
-        $grouped = $invoices->groupBy('responsible_id');
-
-        foreach ($grouped as $centreId => $invoicesGroup) {
-            $centre = $invoicesGroup->first()->centre;
-
-            $attachments = [];
-
-            $responsiblePerson = null;
-
-            foreach ($invoicesGroup as $invoice) {
-                $invoice->sent_at = Carbon::now();
-                
-                if($invoice->status == 'envio'){
-                    $invoice->status = 'oc';
-                }
-                $invoice->save();
-
-                $filename = $invoice->invoice_number . ".pdf";
-                $pdfContent = Storage::get("invoices/{$filename}");
-
-                $attachments[] = [
-                    'filename' => $filename,
-                    'content' => base64_encode($pdfContent),
-                    'contentType' => 'application/pdf',
-                ];
-
-                $responsiblePerson = Responsible::find($invoice->responsible_id);
-            }
-
-
-            $type = $invoicesGroup->first()->is_budget ? 'PRE' : 'COT';
-
-            $html = view('emails/invoice', [
-                'destinatario' => $responsiblePerson->name,
-                'type' => $type
-            ])->render();
-        
-    
-            $subject = ($invoicesGroup->first()->is_budget ? 'Presupuestos' : 'Solicitud de órdenes de compra') . " - {$centre->name}";
-
-
-            $responseEmail = $this->notify($responsiblePerson->email, $html, $attachments, $subject);
-
-            // Si no se pudo enviar el correo, revertir la fecha de envío
-            if (!$responseEmail) {
-                foreach ($invoicesGroup as $invoice) {
-                    $invoice->sent_at = null;
-                    $invoice->save();
-
-                    
-                }
-                //Retornar mensaje de error si no se pudo enviar el correo
-                return response()->json(['error' => "No se pudo enviar el correo a {$centre->name}. Verifica que el correo electrónico esté configurado correctamente."], 500); 
-            }
-
-
-            usleep(600000);
-        }
-
-        // Retornar OK 200
-        return response()->json(['message' => 'Cotizaciones enviadas correctamente.']);
-        
+        return response()->json(['message' => 'Los correos se están enviando en segundo plano.']);
     }
 
 

@@ -70,7 +70,7 @@ class BillingsController extends Controller
                 ]);
         }
 
-        $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
+        $facturapi = new Facturapi(config('app.facturapi_key'));
 
         try {
             $billings = $service->saveBilling($fields, $invoices, $facturapi);
@@ -138,7 +138,7 @@ class BillingsController extends Controller
             $billing->paid_amount = $items->firstWhere('id', $billing->id)['amount'] ?? $billing->total;
         }
 
-        $facturapi = new Facturapi(env('FACTURAPI_API_KEY'));
+        $facturapi = new Facturapi(config('app.facturapi_key'));
         $complements_path = config('app.complements_path');
 
 
@@ -347,9 +347,6 @@ class BillingsController extends Controller
 
         if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE)
             return response()->json(['error' => 'No se pudo abrir el archivo ZIP.'], 500);
-
-        $pdfFullPath = Storage::path($pdf_path);
-        $xmlFullPath = Storage::path($xml_path);
 
         $zip->addFromString(basename($billing->pdf_path), Storage::get($pdf_path));
         $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));

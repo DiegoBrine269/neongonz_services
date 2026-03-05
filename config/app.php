@@ -128,5 +128,5 @@ return [
     'complements_path' => env('COMPLEMENTS_BASE_PATH', 'invoices/sat/comp'),
 
 
-
+    'facturapi_key' => env('FACTURAPI_API_KEY'),
 ];
