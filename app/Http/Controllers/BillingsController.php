@@ -13,6 +13,7 @@ use App\Services\InvoiceService;
 use Facturapi\Facturapi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\HttpCache\Store;
@@ -336,6 +337,11 @@ class BillingsController extends Controller
         if (!is_writable($tempDir)) {
             return response()->json(['error' => 'Directorio temporal sin permisos de escritura.'], 500);
         }
+
+        Log::info([
+            'pdf' => Storage::path($pdf_path),
+            'xml' => Storage::path($xml_path),
+        ]);
 
         $zip = new ZipArchive();
 
