@@ -351,14 +351,8 @@ class BillingsController extends Controller
         $pdfFullPath = Storage::path($pdf_path);
         $xmlFullPath = Storage::path($xml_path);
 
-        // Verificar que los archivos físicamente existan
-        if (!file_exists($pdfFullPath) || !file_exists($xmlFullPath)) {
-            $zip->close();
-            return response()->json(['error' => 'Archivos físicos no encontrados.'], 404);
-        }
-
-        $zip->addFile($pdfFullPath, basename($billing->pdf_path));
-        $zip->addFile($xmlFullPath, basename($billing->xml_path));
+        $zip->addFromString(basename($billing->pdf_path), Storage::get($pdf_path));
+        $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));
         $zip->close();
 
         if (!file_exists($tempPath))
