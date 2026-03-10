@@ -57,6 +57,7 @@ class SendInvoicesJob implements ShouldQueue
                 'type' => $type
             ])->render();
 
+
             $subject = ($invoicesGroup->first()->is_budget ? 'Presupuestos' : 'Solicitud de órdenes de compra') . " - {$centre->name}";
 
             $responseEmail = $emailService->notify($responsiblePerson->email, $html, $attachments, $subject);

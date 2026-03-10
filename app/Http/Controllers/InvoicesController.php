@@ -183,6 +183,9 @@ class InvoicesController extends Controller
             ], 422);
         }
 
+       
+
+
         SendInvoicesJob::dispatch($fields['invoice_ids']);
 
         return response()->json(['message' => 'Los correos se están enviando en segundo plano.']);

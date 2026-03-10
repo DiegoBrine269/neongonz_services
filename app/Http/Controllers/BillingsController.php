@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Helpers\EmailHelper;
 use App\Http\Requests\StoreBillingRequest;
 use App\Http\Requests\StoreComplementRequest;
+use App\Jobs\ProcessBillingJob;
+use App\Jobs\ProcessComplementJob;
 use App\Models\Billing;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Responsible;
+use App\Services\BillingService;
 use App\Services\InvoiceService;
 use Facturapi\Facturapi;
 use Illuminate\Http\Request;
@@ -41,7 +44,7 @@ class BillingsController extends Controller
     /**          
      * Store a newly created resource in storage.
      */
-    public function store(StoreBillingRequest $request, InvoiceService $service)
+    public function store(StoreBillingRequest $request, BillingService $service)
     {
         $fields = $request->validated();
 
@@ -49,76 +52,17 @@ class BillingsController extends Controller
             ->whereIn('id', $fields['invoice_ids'])
             ->get();
 
-        if (!array_key_exists('joined', $fields)) {
-            $fields['joined'] = false;
+        if ($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
+            return response()->json([
+                'error' => 'Todas las facturas deben tener la misma OC para generar un CFDI.'
+            ], 422);
         }
 
-        // Todas las invoices deben tener el mismo oc para generar un CFDI conjunto
-        if($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
-            return response()->json(['error' => 'Todas las facturas deben tener la misma OC para generar un CFDI.'], 422);
-        }
+        $service->validateInvoicesForBilling($invoices);
 
-        foreach($invoices as $invoice) {
-            if (!$invoice || $invoice->status != 'factura') 
-                throw ValidationException::withMessages([
-                    'error' => ["Factura con ID {$invoice->id} no encontrada o en estado inválido."],
-                ]);
-    
-            if(!$invoice->centre->customer)
-                throw ValidationException::withMessages([
-                    'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
-                ]);
-        }
+        ProcessBillingJob::dispatch($fields, $invoices);
 
-        $facturapi = new Facturapi(config('app.facturapi_key'));
-
-        try {
-            $billings = $service->saveBilling($fields, $invoices, $facturapi);
-
-        } catch (\Exception $e) {
-                throw ValidationException::withMessages([
-                    'error' => [$e->getMessage()],
-                ]);
-        }    
-
-        $firstInvoice = $invoices->first();
-        $responsiblePerson = Responsible::find($firstInvoice->responsible_id);
-
-        $attachments = [];
-        foreach($billings as $billing) {
-            // Adjuntando pdf y xml de cada factura al correo
-
-            $pdfContent = Storage::get(config('app.billings_path') . "/pdf/" . $billing->pdf_path);
-            $xmlContent = Storage::get(config('app.billings_path') . "/xml/" . $billing->xml_path);
-
-            $attachments[] = [
-                'filename' => $billing->pdf_path,
-                'content' => base64_encode($pdfContent),
-                'content_type' => 'application/pdf',
-            ];
-            $attachments[] = [
-                'filename' => $billing->xml_path,
-                'content' => base64_encode($xmlContent),
-                'content_type' => 'application/xml',
-            ];
-        }
-
-        $list = $invoices->map(
-            fn($inv) => [
-                'invoice_number' => $inv->invoice_number,
-                'oc' => $inv->oc,
-                'billing' => "FACT" . $inv->billing->folio_number,
-            ]
-        );
-
-        $html = view('emails/billing', [
-            'to' => $responsiblePerson->name,
-            'list' => $list,
-        ])->render();
-
-
-
-        EmailHelper::notify($responsiblePerson->email, $html, $attachments, 'FACTURA(S)', $html);
+        return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
     }
 
     /**
@@ -127,175 +71,16 @@ class BillingsController extends Controller
     public function storeComplement(StoreComplementRequest $request)
     {
         $fields = $request->validated();
+        $ids    = array_column($fields['data'], 'id');
 
-        $ids = array_map(fn($item) => $item['id'], $fields['data']);
         $billings = Billing::whereIn('id', $ids)->get();
-        $invoices = Invoice::whereHas('billings', fn($query) => $query->whereIn('billings.id', $ids))->get();
+        $invoices = Invoice::with('rows.service')
+            ->whereHas('billings', fn($q) => $q->whereIn('billings.id', $ids))
+            ->get();
 
-        $items = collect($request->data);
+        ProcessComplementJob::dispatch($fields, $billings, $invoices);
 
-        foreach($billings as $billing) {
-            $billing->paid_amount = $items->firstWhere('id', $billing->id)['amount'] ?? $billing->total;
-        }
-
-        $facturapi = new Facturapi(config('app.facturapi_key'));
-        $complements_path = config('app.complements_path');
-
-
-        $customer = Customer::find($fields['customer_id']);
-
-        $customer_object = [
-            "legal_name" => $customer->legal_name,
-            "tax_id" => $customer->tax_id,
-            "tax_system" => $customer->tax_system,
-            "address" => [
-                "zip" => $customer->address_zip,
-            ]
-        ];
-
-
-        $total_paid_amount = $items->sum('amount');
-        $total_last_balance = $billings->sum('total' );
-
-        $complement = Billing::create([
-            'payment_form' => $fields['payment_form'],
-            'payment_method' => 'PPD',
-            'type' => 'complemento',
-        ]);
-
-        $related_documents = array_map(function($bill) {
-                return [
-                    "uuid" => trim($bill->uuid),
-                    "amount" => $bill->paid_amount,
-                    "installment" => 1 ,
-                    "last_balance" => $bill->total,
-                    "taxes" => [[
-                        "base" => $bill->total / 1.16,
-                        "type" => "IVA",
-                        "rate" => 0.16
-                    ]
-                ]
-            ];
-        }, $billings->all());
-
-        $sat_comp = $facturapi->Invoices->create([
-            'type' => 'P',
-            "customer" => $customer_object,
-            // "date" => $fields['payment_date'],
-            "complements" => [
-                [
-                    
-                    "type" => "pago",
-                    "data" => [[
-                        "date" => $fields['payment_date'],
-                        "payment_form" => $fields['payment_form'],
-                        "related_documents" => $related_documents
-                    ]]
-                ]
-            ],
-            // "folio_number" => $billing->id,
-            "series" => "COMP"
-        ]);
-        
-        $pdf = $facturapi->Invoices->download_pdf($sat_comp->id);
-        $xml = $facturapi->Invoices->download_xml($sat_comp->id);
-        
-        // $file_name = trim("$invoice->id $invoice->oc");
-        $file_name = "COMP" . $sat_comp->folio_number;
-        
-        $xml_path = "$complements_path/xml/$file_name.xml";
-        $pdf_path = "$complements_path/pdf/$file_name.pdf";
-
-        Storage::put($xml_path, $xml);
-        Storage::put($pdf_path, $pdf);
-
-        $complement->folio_number = $sat_comp->folio_number;
-        $complement->pdf_path = "$file_name.pdf";
-        $complement->xml_path = "$file_name.xml";
-        $complement->uuid = $sat_comp->uuid;
-        $complement->save();
-
-        foreach($invoices as $invoice) {
-            $invoice->billings()->syncWithoutDetaching([$complement->id]);
-        }
-            
-        // En caso de que no se haya pagado la factura completa, hacer un segundo complemento con el resto del monto
-        if($total_paid_amount < $total_last_balance){
-
-            $total_last_balance -= $total_paid_amount;
-            // $remaining_amount = ($invoice->total * 1.16) - $paid_amount;
-
-            $complement2 = Billing::create([
-                'payment_form' => $fields['payment_form'],
-                'payment_method' => $fields['payment_method'] ?? 'PPD',
-                'type' => 'complemento',
-            ]);
-
-            $related_documents = array_map(function($bill) use ($items) {
-                    return [
-                        "uuid" => trim($bill->uuid),
-                        "amount" => $bill->total - $bill->paid_amount,
-                        "installment" => 2 ,
-                        "last_balance" => $bill->total - $bill->paid_amount,
-                        "taxes" => [[
-                            "base" => $bill->total/1.16,
-                            "type" => "IVA",
-                            "rate" => 0.16
-                        ]
-                    ]
-                ];
-            }, $billings->all());
-
-            $sat_comp2 = $facturapi->Invoices->create([
-                'type' => 'P',
-                "customer" => $customer_object,
-                "date" => $fields['payment_date'],
-                "complements" => [
-                    [
-                        "type" => "pago",
-                        "data" => [
-                            [
-                                "date" => $fields['payment_date'],                        
-                                "payment_form" => "17",
-                                "related_documents" => $related_documents,
-                            ]
-                        ]
-                    ]
-                ],
-                // "folio_number" => $billing->id,
-                "series" => "COMP"
-            ]);
-
-            $pdf = $facturapi->Invoices->download_pdf($sat_comp2->id);
-            $xml = $facturapi->Invoices->download_xml($sat_comp2->id);
-            
-            $file_name = "COMP$sat_comp2->folio_number COMPENSACION";
-            
-            $xml_path = "$complements_path/xml/$file_name.xml";
-            $pdf_path = "$complements_path/pdf/$file_name.pdf";
-
-            Storage::put($xml_path, $xml);
-            Storage::put($pdf_path, $pdf);
-
-            $complement2->folio_number = $sat_comp2->folio_number;
-            $complement2->uuid = $sat_comp2->uuid;
-            $complement2->xml_path = "$file_name.xml";
-            $complement2->pdf_path = "$file_name.pdf";
-            $complement2->offsetUnset('paid_amount');
-            $complement2->save();
-
-            // $invoice->billings()->syncWithoutDetaching([$billing->id]);
-            foreach($invoices as $invoice) {
-                $invoice->billings()->syncWithoutDetaching([$complement2->id]);
-            }
-        }
-
-        foreach($invoices as $invoice) {
-            if($invoice->status == 'complemento'){
-                $invoice->status = 'finalizada';
-                $invoice->save();
-            }
-        }
+        return response()->json(['message' => 'El complemento está siendo procesado.'], 202);
     }
 
     public function show(Request $request, string $id)

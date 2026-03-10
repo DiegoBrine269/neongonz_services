@@ -45,4 +45,11 @@ class StoreBillingRequest extends FormRequest
             'payment_method.in' => 'El método de pago no es válido.',
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'joined' => $this->boolean('joined', false),
+        ]);
+    }
 }
