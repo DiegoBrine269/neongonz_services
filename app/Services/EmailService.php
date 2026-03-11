@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BusinessProfile;
 use Illuminate\Support\Facades\Log;
 use Resend\Laravel\Facades\Resend;
 
@@ -26,13 +27,15 @@ class EmailService
         if (app()->environment('local')) 
             $subject = "[CORREO DE PRUEBA] " . $subject;
 
+        $businessProfile = BusinessProfile::current();
+
         try {
             $email = Resend::emails()->send([
-                'from' => "Neón Gonz <$from>",
+                'from' => "$businessProfile->business_name <$from>",
                 'to' => [$email],
-                'cc' => ['neongonz@hotmail.com'],
+                'cc' => [$businessProfile->email],
                 'subject' => $subject,
-                'reply_to' => 'neongonz@hotmail.com',
+                'reply_to' => $businessProfile->email,
                 'html' => $html,
                 'attachments' => $attachments,
             ]);

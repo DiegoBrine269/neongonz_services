@@ -117,15 +117,14 @@
                 
                 <td>
                     <div class="header-text">
-                        <p class="nombre bold">Neón Gonz</p>
+                        <p class="nombre bold">{{ $businessProfile->business_name }}</p>
                     </div>
                     
                     <div style="text-align: center; font-size: 11px">
-                        <p>Carlos Ramón González Oloarte GOOC021121EX0</p>
-                        <p>Calle UNO, MZ 1, LT 15, Col. Xalpa, CP. 09640, Iztapalapa. Ciudad de México.</p>
-                        <p>Correo: neongonz@hotmail.com</p>
-                        <p>Teléfono: 55 3026 3958</p>
-                        
+                        <p>{{ $businessProfile->legal_name }} {{ $businessProfile->rfc }}</p>
+                        <p>{{ $businessProfile->address }}</p>
+                        <p>Correo: {{ $businessProfile->email }}</p>
+                        <p>Teléfono: {{ $businessProfile->phone }}</p>
                     </div>
 
                 </td>
@@ -241,7 +240,7 @@
 
     <footer>
         <p class="bold">NOTA: Los precios antes mencionados no incluyen IVA.</p>
-        <p>Si tiene alguna duda con respecto a esta cotización, favor de comunicarse al 55 3026 3958 con atención a Jazmín Jasso.</p>
+        <p>Si tiene alguna duda con respecto a esta cotización, favor de comunicarse al {{ $businessProfile->phone }} con atención a {{ $businessProfile->contact_name }}.</p>
     </footer>
 
 </body>

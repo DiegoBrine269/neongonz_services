@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Helpers\EmailHelper;
 use App\Models\Billing;
+use App\Models\BusinessProfile;
 use App\Models\Customer;
 use App\Models\Responsible;
 use Facturapi\Facturapi;
@@ -188,6 +189,7 @@ class BillingService
         $html = view('emails/billing', [
             'to'   => $responsiblePerson->name,
             'list' => $list,
+            'businessProfile' => BusinessProfile::current(),
         ])->render();
 
         EmailHelper::notify($responsiblePerson->email, $html, $attachments, 'FACTURA(S)', $html);

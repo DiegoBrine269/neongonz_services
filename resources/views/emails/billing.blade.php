@@ -32,7 +32,7 @@
 
     <div class="signature">
         <p>Atentamente,</p>
-        <p class="brand">Neón Gonz</p>
-        <p class="contact-info">📞 55 3026 3958 (Jazmín Jasso)</p>
+        <p class="brand">{{ $businessProfile->business_name }}</p>
+        <p class="contact-info">📞 {{ $businessProfile->phone }} {{ $businessProfile->contact_name }}</p>
     </div>
 @endsection

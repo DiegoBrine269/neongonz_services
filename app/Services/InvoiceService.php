@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Billing;
+use App\Models\BusinessProfile;
 use App\Models\Centre;
 use App\Models\Invoice;
 use App\Models\InvoiceBilling;
@@ -165,6 +166,7 @@ class InvoiceService
             'date' => Carbon::parse($date)->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
             'projects' => $groupedByProject,
             'responsible' => $centre->responsible,
+            'businessProfile' => BusinessProfile::current(),
         ]);
 
         $pdfContent = $pdf->output();

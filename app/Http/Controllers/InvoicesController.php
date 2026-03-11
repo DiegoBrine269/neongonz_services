@@ -7,6 +7,7 @@ use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Jobs\SendInvoicesJob;
 use App\Models\Billing;
+use App\Models\BusinessProfile;
 use App\Models\Centre;
 use App\Models\Invoice;
 use App\Models\InvoiceVehicle;
@@ -278,6 +279,7 @@ class InvoicesController extends Controller
             'date' => Carbon::now()->locale('es')->translatedFormat('j \\d\\e F \\d\\e Y'),
             'responsible' => $centre->responsible,
             'customInvoice' => true,
+            'businessProfile' => BusinessProfile::current(),
         ]);
         
         $pdfContent = $pdf->output();
@@ -499,17 +501,18 @@ class InvoicesController extends Controller
         }
 
         $from = config('mail.mailers.smtp.username');
+        $businessProfile = BusinessProfile::current();
 
         if (app()->environment('local')) 
             $subject = "[CORREO DE PRUEBA] " . $subject;
 
         try {
             $email = Resend::emails()->send([
-                'from' => "Neón Gonz <$from>",
+                'from' => "$businessProfile->business_name <$from>",
                 'to' => [$email],
-                'cc' => ['neongonz@hotmail.com'],
+                'cc' => [$businessProfile->email],
                 'subject' => $subject,
-                'reply_to' => 'neongonz@hotmail.com',
+                'reply_to' => $businessProfile->email,
                 'html' => $html,
                 'attachments' => $attachments,
             ]);

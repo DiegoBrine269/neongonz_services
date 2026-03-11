@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\BusinessProfile;
 use App\Models\Invoice;
 use App\Models\Responsible;
 use App\Services\EmailService;
@@ -54,7 +55,8 @@ class SendInvoicesJob implements ShouldQueue
             $type = $invoicesGroup->first()->is_budget ? 'PRE' : 'COT';
             $html = view('emails/invoice', [
                 'destinatario' => $responsiblePerson->name,
-                'type' => $type
+                'type' => $type,
+                'businessProfile' => BusinessProfile::current(),
             ])->render();
 
 
