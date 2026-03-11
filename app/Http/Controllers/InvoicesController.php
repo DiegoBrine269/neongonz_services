@@ -118,10 +118,11 @@ class InvoicesController extends Controller
 
         $invoices = $query->where('completed', true)->orderBy('updated_at', 'desc');
 
+
         $shouldPaginate = filter_var($request->query('paginate', true), FILTER_VALIDATE_BOOLEAN);
 
         $invoices = $shouldPaginate
-                    ? $invoices->paginate(20)
+                    ? $invoices->paginate(50)
                     : $invoices->get();
         
     
