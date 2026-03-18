@@ -23,11 +23,10 @@ class VehiclesController extends Controller
                 'vehicle:id,eco,vehicle_type_id', 
                 'vehicle.type:id,type',
                 'project.centre:id,name',
-                'project.service'=> function ($query) {
-                    return $query->with('vehicleTypes')->get();
-                }
+                'project.service:id,name',
+                'project.service.vehicleTypes:id',
             ])
-            ->select('id', 'vehicle_id', 'project_id') 
+            ->select('id', 'vehicle_id', 'project_id')
             ->when(
                 $request->editing_invoice,
                 fn($q) => $q->where(function ($sub) use ($request) {
@@ -73,14 +72,12 @@ class VehiclesController extends Controller
             $query = Vehicle::with([
                 'centre:id,name',
                 'type',
-                'projects' => function ($query) {
+               'projects' => function ($query) {
                     $query->orderBy('project_vehicles.created_at', 'desc')
                         ->limit(5)
-                        ->with([
-                            'centre:id,name',
-                            'service:id,name'
-                        ])
-                        ->select('projects.id', 'centre_id', 'service_id', 'date'); // especifica tabla en id
+                        ->with(['centre:id,name', 'service:id,name'])
+                        ->select('projects.id', 'centre_id', 'service_id', 'date')
+                        ->withPivot('created_at'); // necesario para que el orderBy funcione
                 }
             ])->select('id', 'eco', 'centre_id', 'vehicle_type_id');
 
@@ -126,7 +123,7 @@ class VehiclesController extends Controller
 
             $vehicles = $query->orderBy('eco', 'asc')->paginate(20);
 
-            $vehicles->map(function ($vehicle) {
+            $vehicles->getCollection()->transform(function ($vehicle) {
                 $name = $vehicle->centre->name;
                 $type = $vehicle->type->type;
 
