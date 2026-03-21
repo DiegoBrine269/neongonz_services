@@ -141,7 +141,10 @@ class BillingsController extends Controller
             return response()->json(['error' => 'El ZIP no fue generado correctamente.'], 500);
 
         return response()->download($tempPath, $zipFileName, [
-            'Content-Type' => 'application/zip',
+            'Content-Type'                   => 'application/zip',
+            'Access-Control-Allow-Origin'    => $request->header('Origin'),
+            'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Expose-Headers'  => 'Content-Disposition',
         ])->deleteFileAfterSend(true);
     }
 

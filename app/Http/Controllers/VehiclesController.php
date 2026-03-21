@@ -121,27 +121,19 @@ class VehiclesController extends Controller
             }
         
 
-            $vehicles = $query->orderBy('eco', 'asc')->paginate(20);
+            $vehicles = $query->orderBy('eco', 'asc')->paginate($request->get('size', 20));
 
             $vehicles->getCollection()->transform(function ($vehicle) {
-                $name = $vehicle->centre->name;
-                $type = $vehicle->type->type;
-
-                $vehicle->centre = $vehicle->centre;
-                // unset($vehicle->centre);
-                unset($vehicle->type);
-
-                $vehicle->type = $type;
+                // $vehicle->type = $vehicle->type->type;
+                // dump($vehicle->type);
                 $vehicle->projects = $vehicle->projects->map(function ($project) {
                     $project->service = $project->service->name;
-                    $project->centre = $project->centre->name;
-                    // $project->date = $project->created_at;
-                    // unset($project->centre);
-                    unset($project->service_id);
-                    unset($project->centre_id);
-                    unset($project->pivot);
+                    $project->centre  = $project->centre->name;
+                    unset($project->service_id, $project->centre_id, $project->pivot);
                     return $project;
                 });
+
+                return $vehicle; // ← esto faltaba
             });
         }
 
