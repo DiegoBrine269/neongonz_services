@@ -85,79 +85,70 @@ class BillingsController extends Controller
 
     public function show(Request $request, string $id)
     {
-        try 
-        {
+        
+        $billing = Billing::find($id);
 
-            $billing = Billing::find($id);
-    
-            if (!$billing)
-                return response()->json(['error' => 'Facturación no encontrada.'], 404);
-    
-            $billings_path = config('app.billings_path');
-            $complements_path = config('app.complements_path');
-            $base_path = $billing->type == 'factura' ? $billings_path : $complements_path;
-    
-            $pdf_path = "$base_path/pdf/{$billing->pdf_path}";
-            $xml_path = "$base_path/xml/{$billing->xml_path}";
-    
-            if (!Storage::exists($pdf_path) || !Storage::exists($xml_path))
-                return response()->json(['error' => 'Archivos no encontrados.'], 404);
-    
-            // Verificar que la extensión zip esté disponible
-            if (!class_exists('ZipArchive'))
-                return response()->json(['error' => 'Extensión ZIP no disponible en el servidor.'], 500);
-    
-            $type = $billing->type == 'factura' ? 'FACT' : 'COMP';
-            $zipFileName = "SAT {$type}{$billing->folio_number}.zip";
-    
-            // Usar sys_get_temp_dir() es más seguro en producción
-            $tempDir = storage_path('temp');
-            $tempPath = "{$tempDir}/{$zipFileName}";
-    
-            // Crear directorio temp con manejo de errores
-            if (!file_exists($tempDir)) {
-                if (!mkdir($tempDir, 0775, true)) {
-                    return response()->json(['error' => 'No se pudo crear directorio temporal.'], 500);
-                }
+        if (!$billing)
+            return response()->json(['error' => 'Facturación no encontrada.'], 404);
+
+        $billings_path = config('app.billings_path');
+        $complements_path = config('app.complements_path');
+        $base_path = $billing->type == 'factura' ? $billings_path : $complements_path;
+
+        $pdf_path = "$base_path/pdf/{$billing->pdf_path}";
+        $xml_path = "$base_path/xml/{$billing->xml_path}";
+
+        if (!Storage::exists($pdf_path) || !Storage::exists($xml_path))
+            return response()->json(['error' => 'Archivos no encontrados.'], 404);
+
+        // Verificar que la extensión zip esté disponible
+        if (!class_exists('ZipArchive'))
+            return response()->json(['error' => 'Extensión ZIP no disponible en el servidor.'], 500);
+
+        $type = $billing->type == 'factura' ? 'FACT' : 'COMP';
+        $zipFileName = "SAT {$type}{$billing->folio_number}.zip";
+
+        // Usar sys_get_temp_dir() es más seguro en producción
+        $tempDir = storage_path('temp');
+        $tempPath = "{$tempDir}/{$zipFileName}";
+
+        // Crear directorio temp con manejo de errores
+        if (!file_exists($tempDir)) {
+            if (!mkdir($tempDir, 0775, true)) {
+                return response()->json(['error' => 'No se pudo crear directorio temporal.'], 500);
             }
-    
-            // Verificar que el directorio sea escribible
-            if (!is_writable($tempDir)) {
-                return response()->json(['error' => 'Directorio temporal sin permisos de escritura.'], 500);
-            }
-    
-            Log::info([
-                'pdf' => Storage::path($pdf_path),
-                'xml' => Storage::path($xml_path),
-            ]);
-    
-            $zip = new ZipArchive();
-    
-            if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE)
-                return response()->json(['error' => 'No se pudo abrir el archivo ZIP.'], 500);
-    
-            $zip->addFromString(basename($billing->pdf_path), Storage::get($pdf_path));
-            $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));
-            $zip->close();
-    
-    
-            if (!file_exists($tempPath))
-                return response()->json(['error' => 'El ZIP no fue generado correctamente.'], 500);
-    
-            return response()->download($tempPath, $zipFileName, [
-                'Content-Type'                   => 'application/zip',
-                'Access-Control-Allow-Origin'    => $request->header('Origin'),
-                'Access-Control-Allow-Credentials' => 'true',
-                'Access-Control-Expose-Headers'  => 'Content-Disposition',
-            ])->deleteFileAfterSend(true);
         }
-        catch (ValidationException $e) {
-            return response()->json(['error' => 'Error de validación: ' . $e->getMessage()], 422);
+
+        // Verificar que el directorio sea escribible
+        if (!is_writable($tempDir)) {
+            return response()->json(['error' => 'Directorio temporal sin permisos de escritura.'], 500);
         }
-        catch (\Exception $e) {
-            Log::error('Error al generar ZIP: ' . $e->getMessage(), ['exception' => $e]);
-            return response()->json(['error' => 'Ocurrió un error al generar el archivo ZIP.'], 500);
-        }
+
+        Log::info([
+            'pdf' => Storage::path($pdf_path),
+            'xml' => Storage::path($xml_path),
+        ]);
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE)
+            return response()->json(['error' => 'No se pudo abrir el archivo ZIP.'], 500);
+
+        $zip->addFromString(basename($billing->pdf_path), Storage::get($pdf_path));
+        $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));
+        $zip->close();
+
+        $zipContent = file_get_contents($tempPath);
+        unlink($tempPath); // limpiar manualmente en vez de deleteFileAfterSend
+
+        return response($zipContent, 200, [
+            'Content-Type'                    => 'application/zip',
+            'Content-Length'                  => strlen($zipContent),
+            'Content-Disposition'             => 'attachment; filename="' . $zipFileName . '"',
+            'Access-Control-Allow-Origin'     => $request->header('Origin'),
+            'Access-Control-Allow-Credentials'=> 'true',
+            'Access-Control-Expose-Headers'   => 'Content-Disposition, Content-Length',
+        ]);
     }
 
     /**
