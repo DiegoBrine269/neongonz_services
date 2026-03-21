@@ -137,6 +137,14 @@ class BillingsController extends Controller
         $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));
         $zip->close();
 
+        Log::info('Billing encontrado: ' . $billing->id);
+        Log::info('PDF existe: ' . (Storage::exists($pdf_path) ? 'sí' : 'no'));
+        Log::info('XML existe: ' . (Storage::exists($xml_path) ? 'sí' : 'no'));
+        Log::info('ZipArchive disponible: ' . (class_exists('ZipArchive') ? 'sí' : 'no'));
+        Log::info('tempDir: ' . $tempDir);
+        Log::info('writable: ' . (is_writable($tempDir) ? 'sí' : 'no'));
+        Log::info('ZIP generado, tamaño: ' . filesize($tempPath));
+
         if (!file_exists($tempPath))
             return response()->json(['error' => 'El ZIP no fue generado correctamente.'], 500);
 
