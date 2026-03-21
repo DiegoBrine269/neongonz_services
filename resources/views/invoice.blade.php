@@ -111,8 +111,10 @@
     <header>
         <table>
             <tr>
-                <td style="width: 20%; padding:20px">
-                    <img class="logo" src="{{ public_path('images/Logo-rojo.png') }}" alt="Logotipo de neongonz">
+                <td style="width: 32%; padding:20px">
+                    <div style="width:50%; text-align: center">
+                        <img class="logo" src="{{ public_path('images/Logo-rojo.png') }}" alt="Logotipo de neongonz">
+                    </div>
                 </td>
                 
                 <td>
