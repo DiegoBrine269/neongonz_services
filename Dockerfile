@@ -14,7 +14,8 @@ RUN apk add --no-cache \
         opcache \
         zip \
         mbstring \
-        pcntl
+        pcntl \
+        gd
 
 # Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
