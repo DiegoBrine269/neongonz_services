@@ -30,7 +30,7 @@ COPY . .
 
 # Permisos
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache
 
 # Configs
 COPY docker/nginx.conf /etc/nginx/nginx.conf
