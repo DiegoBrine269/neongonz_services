@@ -8,6 +8,11 @@ RUN apk add --no-cache \
     libzip-dev \
     oniguruma-dev \
     curl \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng-dev
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo \
         pdo_pgsql \
