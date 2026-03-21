@@ -112,7 +112,7 @@
         <table>
             <tr>
                 <td style="width: 20%; padding:20px">
-                    <img class="logo" src="{{ public_path('images/logo-rojo.png') }}" alt="Logotipo de neongonz">
+                    <img class="logo" src="{{ public_path('images/Logo-rojo.png') }}" alt="Logotipo de neongonz">
                 </td>
                 
                 <td>
