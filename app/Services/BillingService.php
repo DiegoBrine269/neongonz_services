@@ -32,19 +32,32 @@ class BillingService
 
     public function validateInvoicesForBilling(Collection $invoices): void
     {
-        foreach ($invoices as $invoice) {
-            if (!$invoice || $invoice->status !== 'factura') {
+
+        $servicesMissingKeys = $invoices->flatMap(function ($invoice) {
+            return $invoice->rows->filter(function ($row) {
+                return empty($row->service->sat_key_prod_serv) || empty($row->service->sat_unit_key);
+            })->pluck('service');
+        })->unique('id');
+
+        if ($servicesMissingKeys->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'error' => 'Los siguientes servicios no tienen claves SAT asignadas: ' . $servicesMissingKeys->pluck('name')->join(', '),
+            ]);
+        }
+
+        $invoices->each(function ($invoice) {
+            if ($invoice->status !== 'factura') {
                 throw ValidationException::withMessages([
-                    'error' => ["Factura con ID {$invoice->id} no encontrada o en estado inválido."],
+                    'invoice_ids' => "La factura #{$invoice->id} está en un estado inválido.",
                 ]);
             }
 
             if (!$invoice->centre->customer) {
                 throw ValidationException::withMessages([
-                    'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
+                    'invoice_ids' => "El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado.",
                 ]);
             }
-        }
+        });
     }
 
     public function saveBilling(array $fields, Collection $invoices): array

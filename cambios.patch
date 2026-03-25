@@ -1,0 +1,168 @@
+diff --git a/app/Http/Controllers/BillingsController.php b/app/Http/Controllers/BillingsController.php
+index d555763..7add5f1 100644
+--- a/app/Http/Controllers/BillingsController.php
++++ b/app/Http/Controllers/BillingsController.php
+@@ -53,13 +53,18 @@ public function store(StoreBillingRequest $request, BillingService $service)
+             ->get();
+ 
+         if ($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
+-            return response()->json([
+-                'error' => 'Todas las facturas deben tener la misma OC para generar un CFDI.'
+-            ], 422);
++            throw ValidationException::withMessages([
++                'joined' => 'Todas las facturas deben tener la misma OC para generar un CFDI.',
++            ]);
+         }
+ 
++        
+         $service->validateInvoicesForBilling($invoices);
+-
++        
++        if ($request->boolean('dry_run')) {
++            return response()->json(['message' => 'Validación correcta']);
++        }
++        
+         ProcessBillingJob::dispatch($fields, $invoices);
+ 
+         return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
+@@ -71,6 +76,11 @@ public function store(StoreBillingRequest $request, BillingService $service)
+     public function storeComplement(StoreComplementRequest $request)
+     {
+         $fields = $request->validated();
++
++        if ($request->boolean('dry_run')) {
++            return response()->json(['message' => 'Validación correcta']);
++        }
++
+         $ids    = array_column($fields['data'], 'id');
+ 
+         $billings = Billing::whereIn('id', $ids)->get();
+diff --git a/app/Services/BillingService.php b/app/Services/BillingService.php
+index 0fd1213..94b2f97 100644
+--- a/app/Services/BillingService.php
++++ b/app/Services/BillingService.php
+@@ -32,19 +32,32 @@ private function getFacturapi(): Facturapi
+ 
+     public function validateInvoicesForBilling(Collection $invoices): void
+     {
+-        foreach ($invoices as $invoice) {
+-            if (!$invoice || $invoice->status !== 'factura') {
++
++        $servicesMissingKeys = $invoices->flatMap(function ($invoice) {
++            return $invoice->rows->filter(function ($row) {
++                return empty($row->service->sat_key_prod_serv) || empty($row->service->sat_unit_key);
++            })->pluck('service');
++        })->unique('id');
++
++        if ($servicesMissingKeys->isNotEmpty()) {
++            throw ValidationException::withMessages([
++                'error' => 'Los siguientes servicios no tienen claves SAT asignadas: ' . $servicesMissingKeys->pluck('name')->join(', '),
++            ]);
++        }
++
++        $invoices->each(function ($invoice) {
++            if ($invoice->status !== 'factura') {
+                 throw ValidationException::withMessages([
+-                    'error' => ["Factura con ID {$invoice->id} no encontrada o en estado inválido."],
++                    'invoice_ids' => "La factura #{$invoice->id} está en un estado inválido.",
+                 ]);
+             }
+ 
+             if (!$invoice->centre->customer) {
+                 throw ValidationException::withMessages([
+-                    'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
++                    'invoice_ids' => "El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado.",
+                 ]);
+             }
+-        }
++        });
+     }
+ 
+     public function saveBilling(array $fields, Collection $invoices): array
+diff --git a/cambios.patch b/cambios.patch
+new file mode 100644
+index 0000000..4f8b31e
+--- /dev/null
++++ b/cambios.patch
+@@ -0,0 +1,81 @@
++diff --git a/app/Http/Controllers/BillingsController.php b/app/Http/Controllers/BillingsController.php
++index d555763..7add5f1 100644
++--- a/app/Http/Controllers/BillingsController.php
+++++ b/app/Http/Controllers/BillingsController.php
++@@ -53,13 +53,18 @@ public function store(StoreBillingRequest $request, BillingService $service)
++             ->get();
++ 
++         if ($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
++-            return response()->json([
++-                'error' => 'Todas las facturas deben tener la misma OC para generar un CFDI.'
++-            ], 422);
+++            throw ValidationException::withMessages([
+++                'joined' => 'Todas las facturas deben tener la misma OC para generar un CFDI.',
+++            ]);
++         }
++ 
+++        
++         $service->validateInvoicesForBilling($invoices);
++-
+++        
+++        if ($request->boolean('dry_run')) {
+++            return response()->json(['message' => 'Validación correcta']);
+++        }
+++        
++         ProcessBillingJob::dispatch($fields, $invoices);
++ 
++         return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
++@@ -71,6 +76,11 @@ public function store(StoreBillingRequest $request, BillingService $service)
++     public function storeComplement(StoreComplementRequest $request)
++     {
++         $fields = $request->validated();
+++
+++        if ($request->boolean('dry_run')) {
+++            return response()->json(['message' => 'Validación correcta']);
+++        }
+++
++         $ids    = array_column($fields['data'], 'id');
++ 
++         $billings = Billing::whereIn('id', $ids)->get();
++diff --git a/app/Services/BillingService.php b/app/Services/BillingService.php
++index 0fd1213..94b2f97 100644
++--- a/app/Services/BillingService.php
+++++ b/app/Services/BillingService.php
++@@ -32,19 +32,32 @@ private function getFacturapi(): Facturapi
++ 
++     public function validateInvoicesForBilling(Collection $invoices): void
++     {
++-        foreach ($invoices as $invoice) {
++-            if (!$invoice || $invoice->status !== 'factura') {
+++
+++        $servicesMissingKeys = $invoices->flatMap(function ($invoice) {
+++            return $invoice->rows->filter(function ($row) {
+++                return empty($row->service->sat_key_prod_serv) || empty($row->service->sat_unit_key);
+++            })->pluck('service');
+++        })->unique('id');
+++
+++        if ($servicesMissingKeys->isNotEmpty()) {
+++            throw ValidationException::withMessages([
+++                'error' => 'Los siguientes servicios no tienen claves SAT asignadas: ' . $servicesMissingKeys->pluck('name')->join(', '),
+++            ]);
+++        }
+++
+++        $invoices->each(function ($invoice) {
+++            if ($invoice->status !== 'factura') {
++                 throw ValidationException::withMessages([
++-                    'error' => ["Factura con ID {$invoice->id} no encontrada o en estado inválido."],
+++                    'invoice_ids' => "La factura #{$invoice->id} está en un estado inválido.",
++                 ]);
++             }
++ 
++             if (!$invoice->centre->customer) {
++                 throw ValidationException::withMessages([
++-                    'customer' => ["El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado."],
+++                    'invoice_ids' => "El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado.",
++                 ]);
++             }
++-        }
+++        });
++     }
++ 
++     public function saveBilling(array $fields, Collection $invoices): array

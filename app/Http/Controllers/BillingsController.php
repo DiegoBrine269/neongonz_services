@@ -53,13 +53,18 @@ class BillingsController extends Controller
             ->get();
 
         if ($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
-            return response()->json([
-                'error' => 'Todas las facturas deben tener la misma OC para generar un CFDI.'
-            ], 422);
+            throw ValidationException::withMessages([
+                'joined' => 'Todas las facturas deben tener la misma OC para generar un CFDI.',
+            ]);
         }
 
+        
         $service->validateInvoicesForBilling($invoices);
-
+        
+        if ($request->boolean('dry_run')) {
+            return response()->json(['message' => 'Validación correcta']);
+        }
+        
         ProcessBillingJob::dispatch($fields, $invoices);
 
         return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
@@ -71,6 +76,11 @@ class BillingsController extends Controller
     public function storeComplement(StoreComplementRequest $request)
     {
         $fields = $request->validated();
+
+        if ($request->boolean('dry_run')) {
+            return response()->json(['message' => 'Validación correcta']);
+        }
+
         $ids    = array_column($fields['data'], 'id');
 
         $billings = Billing::whereIn('id', $ids)->get();
