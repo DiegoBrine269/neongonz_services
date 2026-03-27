@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectVehicle extends Model
 {
@@ -48,5 +49,10 @@ class ProjectVehicle extends Model
             $vehicle->vehicle_type_id,
             $project->centre_id
         );
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(ProjectVehiclesPhoto::class);
     }
 }

@@ -10,6 +10,10 @@ class BusinessProfile extends Model
         protected $table = 'business_profile';
     
         // protected $fillable = [
+        //     'id'
+        // ];
+
+        // protected $fillable = [
         //     'business_name',
         //     'legal_name',
         //     'rfc',

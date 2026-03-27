@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Helpers\EmailHelper;
 use App\Models\Billing;
 use App\Models\BusinessProfile;
+use App\Models\Customer;
 use App\Models\Responsible;
 use Facturapi\Facturapi;
 use Illuminate\Support\Collection;
