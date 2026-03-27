@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Helpers\EmailHelper;
 use App\Models\Billing;
 use App\Models\BusinessProfile;
-use App\Models\Customer;
 use App\Models\Responsible;
 use Facturapi\Facturapi;
 use Illuminate\Support\Collection;
@@ -35,7 +34,7 @@ class BillingService
 
         $servicesMissingKeys = $invoices->flatMap(function ($invoice) {
             return $invoice->rows->filter(function ($row) {
-                return empty($row->service->sat_key_prod_serv) || empty($row->service->sat_unit_key);
+                return ((empty($row->service->sat_key_prod_serv) || empty($row->service->sat_unit_key)) && (empty($row->sat_key_prod_serv) || empty($row->sat_unit_key)));
             })->pluck('service');
         })->unique('id');
 
