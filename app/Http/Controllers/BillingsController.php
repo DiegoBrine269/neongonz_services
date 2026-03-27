@@ -157,7 +157,7 @@ class BillingsController extends Controller
 
             return response()->json([
                 'error'   => 'Error interno del servidor.',
-                'message' => $e->getMessage(), // quita esto en producción real
+                // 'message' => $e->getMessage(), // quita esto en producción real
             ], 500);
         }
     }
