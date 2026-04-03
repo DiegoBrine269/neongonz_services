@@ -13,6 +13,8 @@ RUN apk add --no-cache \
     libpng-dev
 
 RUN mkdir -p /var/lib/nginx/tmp/client_body \
+    && chown root:www-data /var/lib/nginx/ \
+    && chmod 750 /var/lib/nginx/ \
     && chown -R www-data:www-data /var/lib/nginx/tmp \
     && chmod -R 700 /var/lib/nginx/tmp
 
