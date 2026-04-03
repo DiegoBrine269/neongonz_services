@@ -198,11 +198,11 @@ class InvoicesController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(StoreInvoiceRequest $request, InvoiceService $service)
-    {    
+    {
         $fields = $request->validated();
-        
+
         $projectVehicleIds = collect($fields['vehicles'])->pluck('id')->toArray();
- 
+
         $alreadyAssigned = ProjectVehicle::whereIn('id', $projectVehicleIds)
             ->whereNotNull('invoice_id')
             ->exists();
@@ -213,7 +213,19 @@ class InvoicesController extends Controller
             ], 422);
         }
 
-        [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields);
+        try {
+            [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields);
+        } catch (\Throwable $e) {
+            Log::error('saveInvoice failed', [
+                'message' => $e->getMessage(),
+                'fields'  => $fields,
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => 'Error al generar la cotización.'
+            ], 500);
+        }
 
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
