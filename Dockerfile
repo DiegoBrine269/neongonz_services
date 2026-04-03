@@ -12,6 +12,10 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     libpng-dev
 
+RUN mkdir -p /var/lib/nginx/tmp/client_body \
+    && chown -R www-data:www-data /var/lib/nginx/tmp \
+    && chmod -R 700 /var/lib/nginx/tmp
+
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo \
@@ -37,6 +41,7 @@ COPY . .
 # Permisos
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
+
 
 # Configs
 COPY docker/nginx.conf /etc/nginx/nginx.conf
