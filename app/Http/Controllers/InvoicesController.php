@@ -216,6 +216,7 @@ class InvoicesController extends Controller
         try {
             [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields);
         } catch (\Throwable $e) {
+            
             Log::error('saveInvoice failed', [
                 'message' => $e->getMessage(),
                 'fields'  => $fields,
