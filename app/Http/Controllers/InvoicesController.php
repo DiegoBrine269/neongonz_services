@@ -258,6 +258,7 @@ class InvoicesController extends Controller
             'internal_commentary' => $fields['internal_commentary'] ?? null,
             'is_budget'           => $fields['is_budget'],
             'responsible_id'      => $fields['responsible_id'],
+            'is_custom'          => true,
         ];
 
         if (!empty($fields['invoice_id'])) {
@@ -404,6 +405,7 @@ class InvoicesController extends Controller
 
                 ]);
             },
+            'rows'
         ])->find($id);
 
 

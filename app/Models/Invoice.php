@@ -25,7 +25,8 @@ class Invoice extends Model
         'billing_path', 
         'complement_path', 
         'billing_xml_path', 
-        'complement_xml_path'
+        'complement_xml_path',
+        'is_custom',
     ];
 
 

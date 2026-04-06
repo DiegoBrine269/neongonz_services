@@ -225,14 +225,11 @@ class BillingService
 
         $customerObject = $this->buildCustomerObject($customer);
 
-        dump([
-        'fields'   => $fields,
-        'billings' => $billings->map(fn($b) => [
-            'id'          => $b->id,
-            'total'       => $b->total,
-            'paid_amount' => $b->paid_amount,
-        ])->toArray(),
-    ]);
+        // dump(['fields'   => $fields,'billings' => $billings->map(fn($b) => [
+        //     'id'          => $b->id,
+        //     'total'       => $b->total,
+        //     'paid_amount' => $b->paid_amount,
+        // ])->toArray(),]);
 
         DB::transaction(function () use (
             $facturapi, $fields, $billings, $invoices,

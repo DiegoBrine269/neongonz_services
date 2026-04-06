@@ -157,6 +157,7 @@ class InvoiceService
             }
         }
 
+        $invoice->rows()->delete();
         $invoice->rows()->createMany($rows);
 
 
