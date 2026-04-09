@@ -74,9 +74,9 @@ class InvoicesController extends Controller
                     } elseif ($field === 'centre') {
                         $query->whereHas('centre', function ($q) use ($type, $value) {
                             if ($type === 'like') {
-                                $q->where('name', 'like', '%' . $value . '%');
+                                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($value) . '%']);
                             } elseif ($type === '=') {
-                                $q->where('name', '=', $value);
+                                $q->whereRaw('LOWER(name) = ?', [strtolower($value)]);
                             }
                         });
                     } elseif (in_array($field, ['date', 'invoice_number'])) {

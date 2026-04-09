@@ -241,28 +241,27 @@ class BillingService
                 $customerObject,
                 $fields,
                 $billings,
-                installment: 1,
-                paymentForm: $fields['payment_form'],
+                paymentForm: $fields['payment_form'], 
                 amountCallback: fn($bill) => $bill->paid_amount,
             );
 
             $invoices->each(fn($inv) => $inv->billings()->syncWithoutDetaching([$complement->id]));
 
             // Segundo complemento si el pago fue parcial
-            if ($totalPaid < $totalBalance) {
-                $complement2 = $this->createComplement(
-                    $facturapi,
-                    $customerObject,
-                    $fields,
-                    $billings,
-                    installment: 2,
-                    paymentForm: '17',
-                    amountCallback: fn($bill) => $bill->total - $bill->paid_amount,
-                    isCompensation: true,
-                );
+            // if ($totalPaid < $totalBalance) {
+            //     $complement2 = $this->createComplement(
+            //         $facturapi,
+            //         $customerObject,
+            //         $fields,
+            //         $billings,
+            //         installment: 2,
+            //         paymentForm: '17',
+            //         amountCallback: fn($bill) => $bill->total - $bill->paid_amount,
+            //         isCompensation: true,
+            //     );
 
-                $invoices->each(fn($inv) => $inv->billings()->syncWithoutDetaching([$complement2->id]));
-            }
+            //     $invoices->each(fn($inv) => $inv->billings()->syncWithoutDetaching([$complement2->id]));
+            // }
 
             // Actualizar status de invoices
             $invoices->each(function ($invoice) {
@@ -279,49 +278,74 @@ class BillingService
         array $customerObject,
         array $fields,
         Collection $billings,
-        int $installment,
         string $paymentForm,
         callable $amountCallback,
         bool $isCompensation = false,
     ): Billing {
-        $relatedDocuments = $billings->map(function ($bill) use ($installment, $amountCallback) {
-            $amount = $amountCallback($bill);
-            $lastBalance = $installment === 1
-                ? $bill->total
-                : $bill->total - $bill->paid_amount;
+
+        $relatedDocuments2 = [];
+    
+        $relatedDocuments1 = $billings->map(function ($bill) use ($amountCallback, &$relatedDocuments2) {
+            $amount = (float) $amountCallback($bill);
+            $lastBalance = (float) $bill->total; 
+
+            if($amount < $lastBalance) {
+                $remaining = $lastBalance - $amount;
+
+                $relatedDocuments2 [] =  [
+                    "uuid"         => trim($bill->uuid),
+                    "amount"       => $remaining,
+                    "last_balance" => $remaining,
+                    "installment"  => 2,
+                    "taxes"        => [[
+                        "base" => $remaining / 1.16,
+                        "type" => "IVA",
+                        "rate" => 0.16,
+                    ]],
+                ];          
+            }
 
             return [
                 "uuid"         => trim($bill->uuid),
-                "amount"       => (float) $amountCallback($bill),
-                "last_balance" => (float) ($installment === 1 ? $bill->total : $bill->total - $bill->paid_amount),
-                "installment"  => $installment,
+                "amount"       => $amount,
+                "last_balance" => $lastBalance,
+                "installment"  => 1,
                 "taxes"        => [[
-                    "base"         => (float) $bill->total / 1.16,
+                    "base" => $lastBalance / 1.16,
                     "type" => "IVA",
                     "rate" => 0.16,
                 ]],
-            ];
+            ];          
         })->values()->toArray();
 
-        // Log::debug('related_documents', [
-        //     'installment' => $installment,
-        //     'documents'   => $relatedDocuments,
-        // ]);
 
-        // dd($relatedDocuments);
+        $data = [
+            [
+                'date'              => $fields['payment_date'],
+                'payment_form'      => $paymentForm,
+                'related_documents' => $relatedDocuments1,
+            ],
+        ];
+
+        if (!empty($relatedDocuments2)) {
+            $data[] = [
+                'date'              => $fields['payment_date'],
+                'payment_form'      => '17',
+                'related_documents' => $relatedDocuments2,
+            ];
+        }
 
         $sat_comp = $facturapi->Invoices->create([
             'type'     => 'P',
             'customer' => $customerObject,
             'series'   => 'COMP',
-            'complements' => [[
-                'type' => 'pago',
-                'data' => [[
-                    'date'               => $fields['payment_date'],
-                    'payment_form'       => $paymentForm,
-                    'related_documents'  => $relatedDocuments,
-                ]],
-            ]],
+            'complements' => 
+            [
+                [
+                    'type' => 'pago',
+                    'data' => $data
+                ],
+            ],
         ]);
 
         $folio    = $sat_comp->folio_number;
