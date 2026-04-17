@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     libpng-dev
 
+
 RUN mkdir -p /var/lib/nginx/tmp/client_body \
     && chown root:www-data /var/lib/nginx/ \
     && chmod 750 /var/lib/nginx/ \

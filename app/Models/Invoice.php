@@ -27,6 +27,10 @@ class Invoice extends Model
         'billing_xml_path', 
         'complement_xml_path',
         'is_custom',
+        'oc',
+        'f_receipt',
+        'status',
+        'validation_date',
     ];
 
 

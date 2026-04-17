@@ -348,11 +348,13 @@ class InvoicesController extends Controller
      */
     public function update(UpdateInvoiceRequest $request, string $id, InvoiceService $service)
     {
+
         $fields = $request->validated();
 
         $invoice = Invoice::findOrFail($id);
+        $invoice->update($fields);
 
-        
+
         if(!empty($fields['vehicles'])){
             
             [$invoice, $pdfContent, $filename] = $service->saveInvoice($fields, $invoice);
@@ -362,8 +364,7 @@ class InvoicesController extends Controller
             //Detach vehicles no seleccionados
             $selectedVehicleIds = collect($fields['vehicles'])->pluck('vehicle_id')->toArray();
     
-    
-    
+        
             foreach ($invoiceVehicles as $invVehicle) {
                 if (!in_array($invVehicle->vehicle_id, $selectedVehicleIds)) {
                     
@@ -381,7 +382,7 @@ class InvoicesController extends Controller
                 ->header('Access-Control-Expose-Headers', 'Content-Disposition');
         }
 
-        $invoice->update($fields);
+
         return response()->json(['message' => 'Factura actualizada correctamente.']);
 
     }

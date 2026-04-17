@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Http\Requests\StoreVehicleProjectRequest;
 use App\Models\Project;
-use App\Models\Vehicle;
 use App\Models\ProjectType;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Models\ProjectVehicle;
+use App\Models\User;
+use App\Models\Vehicle;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Format;
 
 class ProjectsController extends Controller
 {
@@ -26,7 +32,7 @@ class ProjectsController extends Controller
 
         $query = Project::with([
             'centre:id,name', // Incluye solo 'id' y 'name' de la tabla centres
-            'service:id,name' // Incluye solo 'id' y 'name' de la tabla services
+            'service:id,name', // Incluye solo 'id' y 'name' de la tabla services
         ])
         ->select('id', 'is_open', 'date', 'centre_id', 'service_id') // Selecciona solo los campos necesarios de la tabla projects
         ->orderBy('updated_at', 'desc');
@@ -147,7 +153,13 @@ class ProjectsController extends Controller
                 $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id')
                     ->with([
                         // 'type:id,type',
-                        'projectVehicle.user:id,name,last_name',
+                        'projectVehicle' => function ($query) {
+                            $query->with([
+                                'user:id,name,last_name',
+                                'photos:id,project_vehicle_id,path'
+                            ]);
+                        },
+                        // 'photos'
                     ])
                     ->orderBy('project_vehicles.id', 'desc');
             }
@@ -210,6 +222,12 @@ class ProjectsController extends Controller
                     ] : null,
                     'created_at' => $pivot->created_at,
                     'commentary' => $pivot->commentary,
+                    'photos' => $vehicle->projectVehicle->photos->map(function ($photo) {
+                        return [
+                            'id' => $photo->id,
+                            'url' => url(Storage::temporaryUrl($photo->path, now()->addMinutes(30))),
+                        ];
+                    }),
                 ];
             })->toArray()
         ];
@@ -218,9 +236,8 @@ class ProjectsController extends Controller
         return response()->json($formatted);
     }
 
-    public function addVehicle(Request $request, string $id)
+    public function addVehicle(StoreVehicleProjectRequest $request, string $id)
     {
-
         $project = Project::find($id);
         
         if (!$project) {
@@ -229,20 +246,9 @@ class ProjectsController extends Controller
             ], 404);
         }
 
-        $fields = $request->validate([
-            'eco' => $request->usar_placa ? 'required|max:10' : 'required|numeric|digits:5',
-            'type' => 'required|exists:vehicles_types,id',
-            'commentary' => 'nullable|string|max:255',
-        ],[
-            'eco.max' => 'El económico o placa no puede tener más de 10 caracteres.',
-            'eco.required' => 'El económico o placa es obligatorio.',
-            'eco.numeric' => 'El económico debe ser un número.',
-            'eco.digits' => 'El económico debe tener 5 dígitos.',
-            'type.required' => 'El campo de tipo de vehículo es obligatorio.',
-            'type.exists' => 'El tipo de vehículo especificado no existe.',
-            'commentary.string' => 'El comentario debe ser una cadena de texto.',
-            'commentary.max' => 'El comentario no puede tener más de 255 caracteres.',
-        ]);
+        $fields = $request->validated();
+ 
+        $images = $request->file('images');
 
         $vehicle = Vehicle::where('eco', $fields['eco'])->first();
 
@@ -260,12 +266,7 @@ class ProjectsController extends Controller
 
             $request->validate([
                 'eco' => function ($attribute, $value, $fail) use ($vehicle, $project) {
-                    // Se elimina a petición de Carlos, en su lugar, se actualiza el vehículo
-                    // if ($vehicle->centre_id != $project->centre_id) {
-                    //     $fail('El vehículo pertenece a otro centro de ventas.');
-                    // }
                     $vehicle->centre_id = $project->centre_id;
-
 
                     if ($project->vehicles()->where('vehicle_id', $vehicle->id)->exists()) {
                         $fail('El vehículo ya está asociado a este proyecto.');
@@ -276,11 +277,44 @@ class ProjectsController extends Controller
             $vehicle->save();
         }
 
+        
         $project->vehicles()->attach($vehicle->id, [
             'commentary' => $fields['commentary'] ?? null,
             'user_id' => auth()->user()->id,
             'created_at' => now(),
         ]);
+
+        // Obtener el pivot recién creado
+        $pivot = $project->vehicles()
+            ->wherePivot('vehicle_id', $vehicle->id)
+            ->orderByPivot('created_at', 'desc')
+            ->first()
+            ->pivot;
+
+        $manager = ImageManager::usingDriver(Driver::class);
+        
+        if ($images && is_array($images)) {
+            foreach ($images as $index => $image) {
+                $name = $project->id . "_" . $vehicle->eco . "_" . $index . "." . $image->getClientOriginalExtension();
+
+                // Solo procesar si pesa más de 500KB
+                if ($image->getSize() > 500 * 1024) {
+                    $optimized = $manager->decodePath($image->getPathname())
+                        ->scaleDown(width: 1920)
+                        ->encodeUsingFormat(Format::JPEG, quality: 75); // bajar a 75
+
+                    Storage::put("projects/$name", (string) $optimized);
+                } else {
+                    // Subir original sin tocar
+                    Storage::putFileAs("projects", $image, $name);
+                }
+   
+                DB::table('project_vehicles_photos')->insert([
+                    'project_vehicle_id' => $pivot->id,
+                    'path' => "projects/$name",
+                ]);
+            }
+        }
 
         $project->updated_at = now();
         $project->save();

@@ -48,13 +48,13 @@ class BillingService
         $invoices->each(function ($invoice) {
             if ($invoice->status !== 'factura') {
                 throw ValidationException::withMessages([
-                    'invoice_ids' => "La factura #{$invoice->id} está en un estado inválido.",
+                    'error' => "La cotiszación #{$invoice->id} está en un estado inválido.",
                 ]);
             }
 
             if (!$invoice->centre->customer) {
                 throw ValidationException::withMessages([
-                    'invoice_ids' => "El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado.",
+                    'error' => "El centro '{$invoice->centre->name}' no tiene un cliente fiscal asociado.",
                 ]);
             }
         });
