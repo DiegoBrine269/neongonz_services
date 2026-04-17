@@ -290,25 +290,20 @@ class ProjectsController extends Controller
             ->orderByPivot('created_at', 'desc')
             ->first()
             ->pivot;
-
-        $manager = ImageManager::usingDriver(Driver::class);
         
         if ($images && is_array($images)) {
             foreach ($images as $index => $image) {
-                $name = $project->id . "_" . $vehicle->eco . "_" . $index . "." . $image->getClientOriginalExtension();
+                $ext = match($image->getMimeType()) {
+                    'image/jpeg' => 'jpg',
+                    'image/png'  => 'png',
+                    'image/webp' => 'webp',
+                    default      => 'jpg'
+                };
 
-                // Solo procesar si pesa más de 500KB
-                if ($image->getSize() > 500 * 1024) {
-                    $optimized = $manager->decodePath($image->getPathname())
-                        ->scaleDown(width: 1920)
-                        ->encodeUsingFormat(Format::JPEG, quality: 75); // bajar a 75
+                $name = $project->id . "_" . $vehicle->eco . "_" . $index . "." . $ext;
 
-                    Storage::put("projects/$name", (string) $optimized);
-                } else {
-                    // Subir original sin tocar
-                    Storage::putFileAs("projects", $image, $name);
-                }
-   
+                Storage::putFileAs("projects", $image, $name);
+
                 DB::table('project_vehicles_photos')->insert([
                     'project_vehicle_id' => $pivot->id,
                     'path' => "projects/$name",
@@ -333,6 +328,8 @@ class ProjectsController extends Controller
                     'user_id' => auth()->user()->id,
                     'created_at' => now(),
                 ]);
+
+
         
                 $extra_project->updated_at = now();
                 $extra_project->save();

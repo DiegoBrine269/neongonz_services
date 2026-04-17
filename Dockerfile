@@ -27,7 +27,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         zip \
         mbstring \
         pcntl \
-        gd
+        gd \
+        exif
+
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 # Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer

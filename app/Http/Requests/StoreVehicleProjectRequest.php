@@ -30,7 +30,7 @@ class StoreVehicleProjectRequest extends FormRequest
                 : 'required|digits:5',
             'type' => 'required|exists:vehicles_types,id',
             'commentary' => 'nullable|string|max:255',
-            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
         ];
     }
 
