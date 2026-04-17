@@ -22,8 +22,12 @@ class StoreVehicleProjectRequest extends FormRequest
      */
     public function rules(): array
     {
+
+    // dump($this->usar_placa);
         return [
-            'eco' => $this->usar_placa ? 'required|max:10' : 'required|numeric|digits:5',
+            'eco' => $this->boolean('usar_placa')
+                ? 'required|string|max:10'
+                : 'required|digits:5',
             'type' => 'required|exists:vehicles_types,id',
             'commentary' => 'nullable|string|max:255',
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
