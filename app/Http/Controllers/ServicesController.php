@@ -86,6 +86,7 @@ class ServicesController extends Controller
         $fields = $request->validate([
             'name' => 'required|unique:services,name,' . $service->id,
             'vehicles_types_prices' => 'array',
+            'vehicles_types_prices.*.price' => 'numeric|min:1',
             'vehicles_types_prices.*.vehicle_type_id' => 'exists:vehicles_types,id',
             'centre_id' => 'nullable|exists:centres,id',
             'sat_unit_key' => 'required|string',

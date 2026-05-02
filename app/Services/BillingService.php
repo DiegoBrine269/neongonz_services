@@ -48,7 +48,7 @@ class BillingService
         $invoices->each(function ($invoice) {
             if ($invoice->status !== 'factura') {
                 throw ValidationException::withMessages([
-                    'error' => "La cotiszación #{$invoice->id} está en un estado inválido.",
+                    'error' => "La cotización #{$invoice->id} está en un estado inválido.",
                 ]);
             }
 
