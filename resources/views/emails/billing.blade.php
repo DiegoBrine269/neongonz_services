@@ -23,11 +23,11 @@
         </table>
 
     <p>
-        Quedo a la espera del numero de recibo para la validación de la factura en el portal.
+        Quedamos a la espera del numero de recibo para la validación de la factura en el portal.
     </p>
 
     <p>
-        Para cualquier duda o información adicional, quedamos a su disposición.
+        Para cualquier duda o información adicional, seguimos a su disposición.
     </p>
 
     <div class="signature">

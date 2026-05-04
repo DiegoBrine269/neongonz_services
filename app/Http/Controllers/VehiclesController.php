@@ -144,7 +144,16 @@ class VehiclesController extends Controller
     
     public function show(string $eco)
     {
-        $vehicle = Vehicle::with(['centre', 'type','projects.centre','projects.service',])->where('eco', $eco)->first();
+        $vehicle = Vehicle::with([
+            'centre',
+            'type',
+            'projects' => function ($query) {
+                $query->orderBy('date', 'desc');
+            },
+            'projects.centre',
+            'projects.service',
+        ])->where('eco', $eco)->first();
+
         return $vehicle;
     }
 
