@@ -225,7 +225,7 @@ class ProjectsController extends Controller
                     'photos' => $vehicle->projectVehicle->photos->map(function ($photo) {
                         return [
                             'id' => $photo->id,
-                            'url' => url(Storage::temporaryUrl($photo->path, now()->addMinutes(30))),
+                            'url' => url(Storage::temporaryUrl('projects/' . $photo->path, now()->addMinutes(30))),
                         ];
                     }),
                 ];
@@ -306,7 +306,7 @@ class ProjectsController extends Controller
 
                 DB::table('project_vehicles_photos')->insert([
                     'project_vehicle_id' => $pivot->id,
-                    'path' => "projects/$name",
+                    'path' => $name,
                 ]);
             }
         }
@@ -360,6 +360,15 @@ class ProjectsController extends Controller
         ]);
 
         $vehicle = Vehicle::find($fields['id']);
+
+        $photos = $vehicle->projectVehicle->photos;
+        Storage::delete($photos->pluck('path')->map(function ($path) {
+            return 'projects/' . $path;
+        })->toArray());
+        
+        $photos->each(function ($photo) {
+            $photo->delete();
+        });
 
         $project->vehicles()->detach($vehicle->id);
 
