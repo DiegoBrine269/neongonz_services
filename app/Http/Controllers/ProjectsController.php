@@ -225,7 +225,8 @@ class ProjectsController extends Controller
                     'photos' => $vehicle->projectVehicle->photos->map(function ($photo) {
                         return [
                             'id' => $photo->id,
-                            'url' => url(Storage::temporaryUrl('projects/' . $photo->path, now()->addMinutes(30))),
+                            // 'url' => url(Storage::temporaryUrl('projects/' . $photo->path, now()->addMinutes(30))),
+                            // 'url' => 'storage/projects/' . $photo->path,
                         ];
                     }),
                 ];

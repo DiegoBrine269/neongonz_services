@@ -1,23 +1,23 @@
 <?php
 
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingsController;
+use App\Http\Controllers\CentresController;
+use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\ProjectsController;
+use App\Http\Controllers\ProjectVehiclesPhotosController;
+use App\Http\Controllers\ResponsiblesController;
+use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VehiclesController;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
-use Resend\Laravel\Facades\Resend;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Password;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\CentresController;
-use App\Http\Controllers\BillingsController;
-use App\Http\Controllers\InvoicesController;
-
-use App\Http\Controllers\ProjectsController;
-use App\Http\Controllers\ServicesController;
-use App\Http\Controllers\VehiclesController;
-use App\Http\Controllers\CustomersController;
-use App\Http\Controllers\ResponsiblesController;
+use Illuminate\Support\Facades\Route;
+use Resend\Laravel\Facades\Resend;
 
 
 
@@ -107,6 +107,11 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::put('/user/change-password', [UserController::class, 'changePasswordSave']);    
     Route::put('/user/{id}', [UserController::class, 'update'])->where('id', '[0-9]+');
+
+    Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
+    Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
+
+    
 });
 
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
