@@ -48,6 +48,11 @@ class Vehicle extends Model
     {
         return $this->hasOne(ProjectVehicle::class)->latestOfMany(); // si solo quieres el más reciente
     }
+
+    public function projectVehicles()
+    {
+        return $this->hasMany(ProjectVehicle::class);
+    }
     
     public function projectUser()
     {

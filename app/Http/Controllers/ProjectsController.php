@@ -496,8 +496,24 @@ class ProjectsController extends Controller
     public function destroy(string $id)
     {
         $project = Project::find($id);
-        $project->vehicles()->detach();
 
+        // Primero eliminar fotos
+        foreach ($project->vehicles as $vehicle) {
+            $projectVehicle = $vehicle->projectVehicles()->where('project_id', $project->id)->first();
+            
+            if (!$projectVehicle) continue;
+
+            $photos = $projectVehicle->photos;
+
+            Storage::delete(
+                $photos->pluck('path')->map(fn($path) => 'projects/' . $path)->toArray()
+            );
+
+            $photos->each->delete();
+        }
+
+        // Después desasociar y eliminar
+        $project->vehicles()->detach();
         $project->delete();
     }
 
