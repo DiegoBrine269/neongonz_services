@@ -111,6 +111,11 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
     Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
+    
+});
+
+Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
     Route::get('/debug-photo/{id}', function ($id) {
         return [
@@ -121,8 +126,3 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
                 ->get(),
         ];
     });
-    
-});
-
-Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
