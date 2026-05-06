@@ -156,7 +156,7 @@ class ProjectsController extends Controller
                         'projectVehicle' => function ($query) {
                             $query->with([
                                 'user:id,name,last_name',
-                                'photos:id,project_vehicle_id,path'
+                                'photos:id,project_vehicle_id,path' 
                             ]);
                         },
                         // 'photos'
@@ -308,6 +308,8 @@ class ProjectsController extends Controller
                 DB::table('project_vehicles_photos')->insert([
                     'project_vehicle_id' => $pivot->id,
                     'path' => $name,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
         }

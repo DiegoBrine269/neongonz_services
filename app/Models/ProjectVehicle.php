@@ -20,6 +20,7 @@ class ProjectVehicle extends Model
     {
         return $this->belongsTo(Project::class, 'project_id');
     }
+    
 
     public function vehicle()
     {
@@ -53,6 +54,6 @@ class ProjectVehicle extends Model
 
     public function photos(): HasMany
     {
-        return $this->hasMany(ProjectVehiclesPhoto::class);
+        return $this->hasMany(ProjectVehiclesPhoto::class, 'project_vehicle_id', 'id');
     }
 }
