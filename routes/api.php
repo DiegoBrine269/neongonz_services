@@ -117,12 +117,12 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-    Route::get('/debug-photo/{id}', function ($id) {
-        return [
-            'project_vehicle' => \App\Models\ProjectVehicle::find($id),
-            'photos_relacion' => \App\Models\ProjectVehicle::find($id)?->photos,
-            'photos_raw' => DB::table('project_vehicles_photos')
-                ->where('project_vehicle_id', $id)
-                ->get(),
-        ];
-    });
+    // Route::get('/debug-photo/{id}', function ($id) {
+    //     return [
+    //         'project_vehicle' => \App\Models\ProjectVehicle::find($id),
+    //         'photos_relacion' => \App\Models\ProjectVehicle::find($id)?->photos,
+    //         'photos_raw' => DB::table('project_vehicles_photos')
+    //             ->where('project_vehicle_id', $id)
+    //             ->get(),
+    //     ];
+    // });
