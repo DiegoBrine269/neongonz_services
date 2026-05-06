@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehiclesController;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
@@ -111,6 +112,15 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
     Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
 
+    Route::get('/debug-photo/{id}', function ($id) {
+        return [
+            'project_vehicle' => \App\Models\ProjectVehicle::find($id),
+            'photos_relacion' => \App\Models\ProjectVehicle::find($id)?->photos,
+            'photos_raw' => DB::table('project_vehicles_photos')
+                ->where('project_vehicle_id', $id)
+                ->get(),
+        ];
+    });
     
 });
 
