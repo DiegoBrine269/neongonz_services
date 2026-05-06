@@ -152,14 +152,13 @@ class ProjectsController extends Controller
             'vehicles' => function ($query) {
                 $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id')
                     ->with([
-                        // 'type:id,type',
                         'projectVehicle' => function ($query) {
-                            $query->with([
-                                'user:id,name,last_name',
-                                'photos:id,project_vehicle_id,path' 
-                            ]);
+                            $query->select('id', 'project_id', 'vehicle_id', 'user_id', 'commentary', 'created_at')
+                                ->with([
+                                    'user:id,name,last_name',
+                                    'photos' // 👈 sin select limitado, trae todo
+                                ]);
                         },
-                        // 'photos'
                     ])
                     ->orderBy('project_vehicles.id', 'desc');
             }
