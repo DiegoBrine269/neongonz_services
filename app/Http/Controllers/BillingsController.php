@@ -70,6 +70,32 @@ class BillingsController extends Controller
         return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
     }
 
+    public function resend(Request $request)
+    {
+        if (is_numeric($request->invoice_ids)) {
+            $request->merge(['invoice_ids' => [(int)$request->invoice_ids]]);
+        }
+
+        $fields = $request->validate([
+            'invoice_ids' => 'required|array|min:1',
+            'invoice_ids.*' => 'exists:invoices,id',
+        ], [
+            'invoice_ids.required' => 'Debes seleccionar al menos una cotización para enviar.',
+            'invoice_ids.array' => 'El formato de los IDs de las cotizaciones no es válido.',
+            'invoice_ids.min' => 'Debes seleccionar al menos una cotización para enviar.',
+            'invoice_ids.*.exists' => 'Una o más cotizaciones seleccionadas no existen.',
+        ]);
+
+        $invoices = Invoice::with(['billings', 'centre.customer', 'rows.service'])
+            ->whereIn('id', $fields['invoice_ids'])
+            ->get();
+
+        ProcessBillingJob::dispatch($fields, $invoices, true);
+
+        return response()->json(['message' => 'El envío está siendo procesado.'], 202);
+    
+    }
+
     /**
      * Display the specified resource.
      */

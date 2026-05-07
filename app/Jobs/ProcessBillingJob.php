@@ -21,14 +21,26 @@ class ProcessBillingJob implements ShouldQueue
     public function __construct(
         private readonly array $fields,
         private readonly Collection $invoices,
+        private readonly bool $resend = false,
     ) {}
 
     public function handle(BillingService $service): void
     {
-        $billings = $service->saveBilling($this->fields, $this->invoices);
 
+        Log::info('Iniciando ProcessBillingJob', [
+            'fields'      => $this->fields,
+            'invoice_ids' => $this->invoices->pluck('id'),
+            'resend'      => $this->resend,
+        ]);
+
+        if($this->resend) {
+            $billings = $this->invoices->pluck('billing')->flatten()->filter()->values()->all();
+            $service->sendBillingEmail($this->invoices, $billings);
+            return;
+        }
+
+        $billings = $service->saveBilling($this->fields, $this->invoices);    
         $this->invoices->load('billing');
-
         $service->sendBillingEmail($this->invoices, $billings);
     }
 

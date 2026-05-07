@@ -11,6 +11,7 @@ class ProjectVehiclesPhotosController extends Controller
     public function index(Request $request)
     {
         $images = ProjectVehiclesPhoto::with('projectVehicle.project.service', 'projectVehicle.project.centre', 'projectVehicle.vehicle')->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate(3); // trae 3 a la vez
 
         return response()->json($images);

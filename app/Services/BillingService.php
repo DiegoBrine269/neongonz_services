@@ -205,7 +205,7 @@ class BillingService
             'businessProfile' => BusinessProfile::current(),
         ])->render();
 
-        EmailHelper::notify($responsiblePerson->email, $html, $attachments, 'FACTURA(S)', $html);
+        EmailHelper::notify($responsiblePerson->email, $html, $attachments, 'FACTURA(S)');
     }
 
 

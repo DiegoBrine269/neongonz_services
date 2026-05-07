@@ -371,6 +371,9 @@ class ProjectsController extends Controller
         $vehicle = Vehicle::find($fields['id']);
 
         $photos = $vehicle->projectVehicle->photos;
+
+        dump($photos);
+
         Storage::delete($photos->pluck('path')->map(function ($path) {
             return 'projects/' . $path;
         })->toArray());

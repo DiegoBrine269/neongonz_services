@@ -50,6 +50,8 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         Route::post('/custom', [InvoicesController::class, 'createCustom']);
 
         Route::post('/billings', [BillingsController::class, 'store']);
+        Route::post('/billings/resend', [BillingsController::class, 'resend']);
+    
 
 
         // catálogos
