@@ -49,6 +49,8 @@ class InvoicesController extends Controller
                 $query->whereIn('oc', $ocs);
             }
 
+            
+
             foreach ($request->filter as $filter) {
                 if (isset($filter['field'], $filter['type'], $filter['value'])) {
     
@@ -57,13 +59,13 @@ class InvoicesController extends Controller
                     $value = $filter['value'];
     
                     // Si es un filtro por fecha, convertirla a formato Y-m-d
-                    if ($field === 'date') {
-                        try {
-                            // $value = \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
-                            $query->where('date', '=', $value);
-                        } catch (\Exception $e) {
-                            continue; // Ignorar si la fecha no se puede convertir
+                   if ($field === 'date') {
+
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                            $query->whereDate('date', $value);
                         }
+
+                        continue;
                     } elseif ($field === 'oc' && $ocs->count() <= 1) {
                         if ($type === 'like') {
                             $query->where('oc', 'like', '%' . $value . '%');
@@ -105,6 +107,28 @@ class InvoicesController extends Controller
                     }
                 }
             }
+        }
+
+         // --- Búsqueda global (OR) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $s = '%' . $search . '%';
+
+            $query->where(function ($q) use ($s) {
+                $q->where('oc', 'ilike', $s)
+                ->orWhere('invoice_number', 'ilike', $s)
+                ->orWhere('services', 'ilike', $s)
+                ->orWhere('internal_commentary', 'ilike', $s)
+                ->orWhere('status', 'ilike', $s)
+                ->orWhere('f_receipt', 'ilike', $s)
+
+                ->orWhereHas('centre', fn($q2) => $q2->where('name', 'ilike', $s))
+                ->orWhereHas('billing', fn($q2) => $q2->where('payment_method', 'ilike', $s))
+                ->orWhereHas('billing', fn($q2) => $q2->where('payment_form', 'ilike', $s))
+
+                ->orWhereHas('billing', fn($q2) => $q2->where('uuid', 'ilike', $s));
+            });
         }
 
         $invoices =    
@@ -260,6 +284,11 @@ class InvoicesController extends Controller
             'responsible_id'      => $fields['responsible_id'],
             'is_custom'          => true,
         ];
+
+        // Solo incluir status si viene un valor explícito
+        if (!is_null($fields['status'] ?? null)) {
+            $data['status'] = $fields['status'];
+        }
 
         if (!empty($fields['invoice_id'])) {
             $invoice = Invoice::findOrFail($fields['invoice_id']);
@@ -599,7 +628,7 @@ class InvoicesController extends Controller
                     'validation_date.date' => 'La fecha de validación no es una fecha válida.',
                 ]);
 
-                $invoice->f_receipt = $request->input('f');
+                $invoice->f_receipt = $request->input('f_receipt');
                 $invoice->validation_date = $request->input('validation_date');
 
                 if($invoice->billing->payment_method == 'PPD'){
