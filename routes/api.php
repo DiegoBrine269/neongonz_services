@@ -87,16 +87,16 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
 
 // USUARIOS ACTIVOS (NO ADMIN)
 Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
-    Route::apiResource('centres', CentresController::class)->only('index');
-    Route::apiResource('vehicles', VehiclesController::class)->only('index');
-    Route::apiResource('services', ServicesController::class)->only('index');
-    Route::apiResource('projects', ProjectsController::class)->except(['destroy', 'toggleStatus']);
-
 
     //Extras de vehículos
     Route::get('/vehicles/types', [VehiclesController::class, 'getTypes']);
     Route::post('/vehicles/types', [VehiclesController::class, 'storeType']);
     Route::put('/vehicles/types/{id}', [VehiclesController::class, 'updateType']);
+    
+    Route::apiResource('centres', CentresController::class)->only('index');
+    Route::apiResource('vehicles', VehiclesController::class)->only(['index', 'show'])->whereNumber('vehicle');
+    Route::apiResource('services', ServicesController::class)->only('index');
+    Route::apiResource('projects', ProjectsController::class)->except(['destroy', 'toggleStatus']);
 
 
 
