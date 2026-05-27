@@ -36,7 +36,7 @@ class StoreCustomInvoiceRequest extends FormRequest
             'responsible_id' => 'required|exists:responsibles,id',
             'rows.*.sat_unit_key' => 'nullable|string|exists:sat_units,key',
             'rows.*.sat_key_prod_serv' => 'required|string|digits:8',
-            'rows.*.price'=>'required|numeric|min:1',
+            'status' => 'nullable|string|in:envio,oc,factura,f,complemento,finalizada',
         ];
     }
 
@@ -68,9 +68,9 @@ class StoreCustomInvoiceRequest extends FormRequest
             'rows.*.sat_unit_key.exists' => 'Una o más unidades de medida no son válidas.',
             'rows.*.sat_key_prod_serv.required' => 'La clave de producto o servicio es obligatoria en todas las filas.',
             'rows.*.sat_key_prod_serv.digits' => 'La clave de producto o servicio debe tener 8 dígitos.',
-            'rows.*.price.required' => 'El precio es obligatorio en todas las filas.',
             'rows.*.price.numeric' => 'El precio debe ser un número.',
             'rows.*.price.min' => 'El precio debe ser al menos 1.',
+            'status.in' => 'El estado debe ser uno de los siguientes: envio, oc, factura, f, complemento, finalizada.',
         ];
     }
 }
