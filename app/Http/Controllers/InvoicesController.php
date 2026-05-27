@@ -335,8 +335,8 @@ class InvoicesController extends Controller
         Storage::put("invoices/$filename", $pdfContent);
 
         $invoice->path = $filename; 
-
-        if($fields['completed'] && empty($data['status'])) {
+        
+        if ($fields['completed'] && !isset($data['status'])) {
             $invoice->status = 'envio';
         }
         $invoice->save();
