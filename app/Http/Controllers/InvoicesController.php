@@ -336,9 +336,9 @@ class InvoicesController extends Controller
 
         $invoice->path = $filename; 
 
-        if($fields['completed'])
+        if($fields['completed'] && empty($data['status'])) {
             $invoice->status = 'envio';
-
+        }
         $invoice->save();
 
         
