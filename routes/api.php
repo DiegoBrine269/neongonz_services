@@ -74,7 +74,7 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
 
     Route::apiResource('customers', CustomersController::class);
     Route::apiResource('centres', CentresController::class);
-    Route::apiResource('vehicles', VehiclesController::class)->whereNumber('vehicle');
+    Route::apiResource('vehicles', VehiclesController::class)->whereAlphaNumeric('vehicle');
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
 
@@ -94,7 +94,7 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
     Route::put('/vehicles/types/{id}', [VehiclesController::class, 'updateType']);
     
     Route::apiResource('centres', CentresController::class)->only('index');
-    Route::apiResource('vehicles', VehiclesController::class)->only(['index', 'show'])->whereNumber('vehicle');
+    Route::apiResource('vehicles', VehiclesController::class)->only(['index', 'show'])->whereAlphaNumeric('vehicle');
     Route::apiResource('services', ServicesController::class)->only('index');
     Route::apiResource('projects', ProjectsController::class)->except(['destroy', 'toggleStatus']);
 

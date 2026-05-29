@@ -105,6 +105,25 @@
             height: 15px;
         }
 
+        .encabezado-rojo {
+            background-color: #a30000;
+            color: white;
+            font-weight: bold;
+        }
+
+                .border {
+            border: 1px solid black;
+        }
+
+        .no-border {
+            border: none!important;
+        }
+
+        .no-bg {
+            background-color: transparent;
+        }
+
+
     </style>
 </head>
 <body>
@@ -172,14 +191,15 @@
         @endif
         <table class="lista" cellspacing="0" cellpadding="0">
             <tr>
-                <th class="bold">Cantidad</th>
-                <th class="bold">Descripción</th>
-                <th class="bold">Precio</th>
-                <th class="bold">Total</th>
+                <th class="bold encabezado-rojo">Cantidad</th>
+                <th class="bold encabezado-rojo">Descripción</th>
+                <th class="bold encabezado-rojo">Precio</th>
+                <th class="bold encabezado-rojo">Total</th>
             </tr>
 
             @php
                 $grandTotal = 0; // Variable para acumular el total
+                $totalRows = 0;
             @endphp
 
 
@@ -211,6 +231,8 @@
                                 // $grouped_vehicles = $data['group']; // Obtén el grupo de vehículos
                                 $totalForGroup = $grouped_vehicles_by_type->sum('price'); // Calcula el total del grupo
                                 $grandTotal += $totalForGroup; 
+
+                                $totalRows++;
                             @endphp
                             <tr>
                                 <td class="text-center" style="min-width: 70px">{{ count( $grouped_vehicles_by_type) }}</td>
@@ -227,13 +249,34 @@
             @endif
 
 
+                
+                {{-- Acompletar para que sean mínimo 10 filas --}}
+                @for($i = $totalRows; $i < 10; $i++)
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                @endfor
 
-                <tr><td></td><td></td><td></td> <td></td></tr>
                 <tr>
-                    <td></td>
-                    <td></td>
-                    <td class="text-right">SUBTOTAL</td>                    
-                    <td class="text-right"><span class="text-left">$</span> {{ number_format($grandTotal, 2)}} </td>
+                    <td class="no-border no-bg"></td>
+                    <td class="no-border no-bg"></td>
+                    <td class="encabezado-azul">SUBTOTAL</td>                    
+                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal, 2)}} </td>
+                </tr>
+                <tr>
+                    <td class="no-border no-bg"></td>
+                    <td class="no-border no-bg"></td>
+                    <td class="encabezado-azul">IVA</td>                    
+                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal*0.16, 2)}} </td>
+                </tr>
+                <tr>
+                    <td class="no-border no-bg"></td>
+                    <td class="no-border no-bg"></td>
+                    <td class="encabezado-azul">TOTAL</td>                    
+                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal*1.16, 2)}} </td>
                 </tr>
         </table>
     </main>
