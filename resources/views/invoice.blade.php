@@ -266,18 +266,6 @@
                     <td class="encabezado-azul">SUBTOTAL</td>                    
                     <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal, 2)}} </td>
                 </tr>
-                <tr>
-                    <td class="no-border no-bg"></td>
-                    <td class="no-border no-bg"></td>
-                    <td class="encabezado-azul">IVA</td>                    
-                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal*0.16, 2)}} </td>
-                </tr>
-                <tr>
-                    <td class="no-border no-bg"></td>
-                    <td class="no-border no-bg"></td>
-                    <td class="encabezado-azul">TOTAL</td>                    
-                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal*1.16, 2)}} </td>
-                </tr>
         </table>
     </main>
 
