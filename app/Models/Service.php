@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Service extends Model
 {
@@ -54,6 +55,13 @@ class Service extends Model
             // específico primero, general después
             ->orderByRaw('centre_id IS NULL')
             ->value('price');
+    }
+
+    public function prices(): HasMany
+    {
+        return $this->hasMany(ServiceVehicleType::class)
+                    // ->whereNull('centre_id')
+                    ->with('vehicleType');
     }
     
 }

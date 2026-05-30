@@ -37,6 +37,9 @@ class StoreCustomInvoiceRequest extends FormRequest
             'rows.*.sat_unit_key' => 'nullable|string|exists:sat_units,key',
             'rows.*.sat_key_prod_serv' => 'required|string|digits:8',
             'status' => 'nullable|string|in:envio,oc,factura,f,complemento,finalizada',
+            'oc' => 'nullable|string|max:255',
+            'f_receipt' => 'nullable|string|max:255',
+            'validation_date' => 'nullable|date',
         ];
     }
 
@@ -71,6 +74,10 @@ class StoreCustomInvoiceRequest extends FormRequest
             'rows.*.price.numeric' => 'El precio debe ser un número.',
             'rows.*.price.min' => 'El precio debe ser al menos 1.',
             'status.in' => 'El estado debe ser uno de los siguientes: envio, oc, factura, f, complemento, finalizada.',
+            'oc.max' => 'El campo OC debe ser menor a 255 caracteres.',
+            'f_receipt.max' => 'El campo F. Receipt debe ser menor a 255 caracteres.',
+            'validation_date.date' => 'La fecha de validación no es válida.',
+            
         ];
     }
 }

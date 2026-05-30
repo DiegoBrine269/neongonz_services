@@ -283,6 +283,9 @@ class InvoicesController extends Controller
             'is_budget'           => $fields['is_budget'],
             'responsible_id'      => $fields['responsible_id'],
             'is_custom'          => true,
+            'oc'                  => $fields['oc'] ?? null,
+            'f_receipt'           => $fields['f_receipt'] ?? null,
+            'validation_date'     => $fields['validation_date'] ?? null,
         ];
 
         // Solo incluir status si viene un valor explícito

@@ -13,7 +13,7 @@ class ServicesController extends Controller
      */
     public function index()
     {
-        $query = Service::orderBy('name', 'asc')->select('id', 'name');
+        $query = Service::with(['prices.vehicleType', 'prices.centre'])->orderBy('name', 'asc');
         $services = $query->get();
 
 

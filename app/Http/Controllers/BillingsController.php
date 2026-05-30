@@ -52,6 +52,13 @@ class BillingsController extends Controller
             ->whereIn('id', $fields['invoice_ids'])
             ->get();
 
+        //Validar que todas estén en el status de 'factura'
+        if ($invoices->some(fn($invoice) => $invoice->status !== 'factura')) {
+            throw ValidationException::withMessages([
+                'invoice_ids' => 'Todas las cotizaciones deben estar en estado "factura" para generar la facturación.',
+            ]);
+        }
+
         if ($fields['joined'] && $invoices->pluck('oc')->unique()->count() > 1) {
             throw ValidationException::withMessages([
                 'joined' => 'Todas las facturas deben tener la misma OC para generar un CFDI.',
@@ -113,6 +120,12 @@ class BillingsController extends Controller
         $invoices = Invoice::with('rows.service')
             ->whereHas('billings', fn($q) => $q->whereIn('billings.id', $ids))
             ->get();
+
+        if ($invoices->some(fn($invoice) => $invoice->status !== 'complemento')) {
+            throw ValidationException::withMessages([
+                'invoice_ids' => 'Todas las cotizaciones deben estar en estado "complemento" para generar el complemento.',
+            ]);
+        }
 
         ProcessComplementJob::dispatch($fields, $billings, $invoices);
 
