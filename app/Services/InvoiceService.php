@@ -99,8 +99,9 @@ class InvoiceService
             foreach ($groupedByProject as $project) {
                 foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price) {
                     foreach ($grouped_by_price as $data) {
+                        
                         $groupedVehicles = $data['group'];
-                        $grandTotal += $groupedVehicles->sum('price');
+                        $grandTotal += $groupedVehicles->sum(fn($v) => $v->price * $v->quantity);
                     }
                 }
             }
@@ -142,9 +143,10 @@ class InvoiceService
             foreach ($project->vehicles_grouped_by_price as $price => $grouped_by_price) {
                 foreach ($grouped_by_price as $data) {
                     $groupedVehicles = $data['group'];
-                    $quantity = count($groupedVehicles);
-                    $concept = $project->service . " (" . $data['type'] . "): " . implode(', ', $groupedVehicles->pluck('eco')->toArray());
-                    $totalForGroup = $groupedVehicles->sum('price');
+                    $quantity = $groupedVehicles->sum('quantity');
+
+                    $concept = $project->service . " (" . $data['type'] . "): " . implode(', ', $groupedVehicles->map(fn($v) => $v->eco . ($v->quantity > 1 ? " (x{$v->quantity})" : ''))->toArray());
+                    $totalForGroup = $groupedVehicles->sum(fn($v) => $v->price * $v->quantity);
 
                     $rows[] = [
                         'quantity' => $quantity,

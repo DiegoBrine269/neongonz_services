@@ -20,6 +20,7 @@ class Service extends Model
         'is_public',
         'sat_unit_key',
         'sat_key_prod_serv',
+        'multiple_quantity',
     ];
 
     public function projects()

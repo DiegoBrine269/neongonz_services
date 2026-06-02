@@ -45,9 +45,7 @@ class EmailService
             return false;
         }
 
-        // $email =Resend::emails()->get($email->id);
 
-        // dump($email);
         return true;
     }
 }

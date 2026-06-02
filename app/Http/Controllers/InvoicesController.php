@@ -194,6 +194,7 @@ class InvoicesController extends Controller
         $fields = $request->validate([
             'invoice_ids' => 'required|array|min:1',
             'invoice_ids.*' => 'exists:invoices,id',
+            'email' => 'nullable',
         ], [
             'invoice_ids.required' => 'Debes seleccionar al menos una cotización para enviar.',
             'invoice_ids.array' => 'El formato de los IDs de las cotizaciones no es válido.',
@@ -212,7 +213,7 @@ class InvoicesController extends Controller
        
 
 
-        SendInvoicesJob::dispatch($fields['invoice_ids']);
+        SendInvoicesJob::dispatch($fields['invoice_ids'], $fields['email'] ?? null);
 
         return response()->json(['message' => 'Los correos se están enviando en segundo plano.']);
     }
@@ -248,7 +249,8 @@ class InvoicesController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Error al generar la cotización.'
+                'error' => $e->getMessage() ?: 'Error al crear la cotización.'
+
             ], 500);
         }
 

@@ -14,6 +14,7 @@ class ProjectVehicle extends Model
         'vehicle_id',
         'user_id',
         'commentary',
+        'quantity',
     ];
 
     public function project()

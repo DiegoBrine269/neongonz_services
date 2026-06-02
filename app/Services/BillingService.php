@@ -6,6 +6,7 @@ use App\Helpers\EmailHelper;
 use App\Models\Billing;
 use App\Models\BusinessProfile;
 use App\Models\Customer;
+use App\Models\Email;
 use App\Models\Responsible;
 use Facturapi\Facturapi;
 use Illuminate\Support\Collection;
@@ -205,7 +206,19 @@ class BillingService
             'businessProfile' => BusinessProfile::current(),
         ])->render();
 
-        EmailHelper::notify($responsiblePerson->email, $html, $attachments, 'FACTURA(S)');
+        $subject = 'FACTURA(S)';
+
+        $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject);
+
+        if ($messageId) {
+            Email::create([
+                'message_id'     => $messageId,
+                'recipient'      => $responsiblePerson->email,
+                'subject'        => $subject,
+                'emailable_type' => Billing::class,
+                'emailable_id'   => $billings[0]->id,
+            ]);
+        }
     }
 
 

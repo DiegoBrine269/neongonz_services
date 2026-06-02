@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Helpers\EmailHelper;
 use App\Models\BusinessProfile;
+use App\Models\Email;
 use App\Models\Invoice;
 use App\Models\Responsible;
 use App\Services\EmailService;
@@ -16,7 +18,9 @@ class SendInvoicesJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public array $invoiceIds
+        public array $invoiceIds,
+        public ?array $email = null
+    
     ) {}
 
     public function handle(EmailService $emailService): void
@@ -62,14 +66,26 @@ class SendInvoicesJob implements ShouldQueue
 
             $subject = ($invoicesGroup->first()->is_budget ? 'Presupuestos' : 'Solicitud de órdenes de compra') . " - {$centre->name}";
 
-            $responseEmail = $emailService->notify($responsiblePerson->email, $html, $attachments, $subject);
+            $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject, $this->email);
 
-            if (!$responseEmail) {
+
+            if (!$messageId) {
                 foreach ($invoicesGroup as $invoice) {
                     $invoice->sent_at = null;
                     $invoice->save();
                 }
             }
+            
+            if ($messageId) {
+                Email::create([
+                    'message_id'     => $messageId,
+                    'recipient'      => $responsiblePerson->email,
+                    'subject'        => $subject,
+                    'emailable_type' => Invoice::class,
+                    'emailable_id'   => $invoicesGroup[0]->id,
+                ]);
+            }
+            
 
             usleep(600000);
         }

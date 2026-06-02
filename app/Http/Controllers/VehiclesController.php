@@ -25,8 +25,9 @@ class VehiclesController extends Controller
                 'project.centre:id,name',
                 'project.service:id,name',
                 'project.service.vehicleTypes:id',
+
             ])
-            ->select('id', 'vehicle_id', 'project_id')
+            ->select('id', 'vehicle_id', 'project_id', 'quantity')
             ->when(
                 $request->editing_invoice,
                 fn($q) => $q->where(function ($sub) use ($request) {
@@ -53,7 +54,7 @@ class VehiclesController extends Controller
                     'centre_id' => $projectVehicle->project->centre->id ?? null,
                     'vehicle_type_id' => $vehicleTypeId,
                     'type' => $projectVehicle->vehicle->type->type,
-
+                    'quantity' => $projectVehicle->quantity,
                     'project_id' => $projectVehicle->project->id,
                     'project' => [
                         'id' => $projectVehicle->project->id,

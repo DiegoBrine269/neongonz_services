@@ -31,6 +31,7 @@ class StoreVehicleProjectRequest extends FormRequest
             'type' => 'required|exists:vehicles_types,id',
             'commentary' => 'nullable|string|max:255',
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
+            'quantity' => 'nullable|integer|min:1',
         ];
     }
 
@@ -60,6 +61,9 @@ class StoreVehicleProjectRequest extends FormRequest
             'images.*.image' => 'Cada archivo debe ser una imagen.',
             'images.*.mimes' => 'Cada imagen debe ser un archivo de tipo: jpeg, png, jpg o webp.',
             'images.*.max' => 'Cada imagen no puede superar los 2MB de tamaño.',
+            'quantity.integer' => 'La cantidad debe ser un número entero.',
+            'quantity.min' => 'La cantidad debe ser al menos 1.',
+
         ];
     }
 }

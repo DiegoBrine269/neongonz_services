@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingsController;
 use App\Http\Controllers\CentresController;
 use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\EmailController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectVehiclesPhotosController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\ResponsiblesController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehiclesController;
+use App\Http\Controllers\WebhookController;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,18 +115,14 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
     Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
+
+    Route::get('/inbox', [EmailController::class, 'inbox']);
+
     
 });
 
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-    // Route::get('/debug-photo/{id}', function ($id) {
-    //     return [
-    //         'project_vehicle' => \App\Models\ProjectVehicle::find($id),
-    //         'photos_relacion' => \App\Models\ProjectVehicle::find($id)?->photos,
-    //         'photos_raw' => DB::table('project_vehicles_photos')
-    //             ->where('project_vehicle_id', $id)
-    //             ->get(),
-    //     ];
-    // });
+Route::post('/webhooks/resend', [WebhookController::class, 'resend']);
+

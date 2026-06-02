@@ -29,10 +29,12 @@ class ServicesController extends Controller
 
         $fields = $request->validate([
             'name' => 'required|unique:services,name',
+            'multiple_quantity' => 'boolean',
             // 'is_public' => 'boolean|required',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
+            'multiple.boolean' => "El campo debe ser verdadero o falso",
             // 'is_public.boolean' => 'El campo is_public debe ser verdadero o falso',
             // 'is_public.required' => 'El campo is_public es obligatorio',
         ]);
@@ -41,6 +43,7 @@ class ServicesController extends Controller
 
         $service = Service::create([
             'name' => $fields['name'],
+            'multiple_quantity' => $fields['multiple_quantity'] ?? false,
             // 'is_public' => $fields['is_public'],
         ]);
 
@@ -109,6 +112,17 @@ class ServicesController extends Controller
         // Actualizar los precios de los tipos de vehículos
         if ($request->vehicles_types_prices) {
             foreach ($request->vehicles_types_prices as $item) {
+
+            if (is_null($item['price']) || $item['price'] === '') {
+                // Si el precio es null, borrar el registro si existe
+                DB::table('service_vehicle_type')
+                    ->where('service_id', $service->id)
+                    ->where('vehicle_type_id', $item['vehicle_type_id'])
+                    ->where('centre_id', $centre_id)
+                    ->delete();
+                continue;
+            }
+
             // Insertando o actualizando en la tabla pivote
             DB::table('service_vehicle_type')
                 ->updateOrInsert(

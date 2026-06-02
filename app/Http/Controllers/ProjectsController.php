@@ -147,7 +147,7 @@ class ProjectsController extends Controller
     {
         $project = Project::with([
             'centre:id,name',
-            'service:id,name',
+            'service:id,name,multiple_quantity',
             // 'type',
             'vehicles' => function ($query) {
                 $query->select('vehicles.id', 'vehicles.eco', 'vehicles.vehicle_type_id')
@@ -159,7 +159,8 @@ class ProjectsController extends Controller
                                 'project_vehicles.vehicle_id',
                                 'project_vehicles.user_id',
                                 'project_vehicles.commentary',
-                                'project_vehicles.created_at'
+                                'project_vehicles.created_at',
+                                'project_vehicles.quantity'
                             )
                             ->with([
                                 'user:id,name,last_name',
@@ -211,6 +212,7 @@ class ProjectsController extends Controller
             'service' => $project->service ? [
                 'id' => $project->service->id,
                 'name' => $project->service->name,
+                'multiple_quantity' => $project->service->multiple_quantity,
             ] : null,
             'vehicles' => $vehicles->map(function ($vehicle) use ($users) {
                 $pivot = $vehicle->pivot;
@@ -228,11 +230,10 @@ class ProjectsController extends Controller
                     ] : null,
                     'created_at' => $pivot->created_at,
                     'commentary' => $pivot->commentary,
+                    'quantity' => $vehicle->projectVehicle->quantity,
                     'photos' => $vehicle->projectVehicle->photos->map(function ($photo) {
                         return [
                             'id' => $photo->id,
-                            // 'url' => url(Storage::temporaryUrl('projects/' . $photo->path, now()->addMinutes(30))),
-                            // 'url' => 'storage/projects/' . $photo->path,
                         ];
                     }),
                 ];
@@ -289,6 +290,7 @@ class ProjectsController extends Controller
             'commentary' => $fields['commentary'] ?? null,
             'user_id' => auth()->user()->id,
             'created_at' => now(),
+            'quantity' => $fields['quantity'] ?? 1,
         ]);
 
         // Obtener el pivot recién creado
