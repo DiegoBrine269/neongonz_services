@@ -169,7 +169,7 @@ class BillingService
         })->values()->toArray();
     }
 
-    public function sendBillingEmail(Collection $invoices, array $billings): void
+    public function sendBillingEmail(Collection $invoices, array $billings, $emailToReply = null): void
     {
         $responsiblePerson = Responsible::findOrFail($invoices->first()->responsible_id);
 
@@ -208,7 +208,8 @@ class BillingService
 
         $subject = 'FACTURA(S)';
 
-        $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject);
+
+        $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject, $emailToReply);
 
         if ($messageId) {
             Email::create([

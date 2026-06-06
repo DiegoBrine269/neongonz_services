@@ -11,6 +11,7 @@ use App\Services\EmailService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class SendInvoicesJob implements ShouldQueue
@@ -18,15 +19,14 @@ class SendInvoicesJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public array $invoiceIds,
-        public ?array $email = null
+        public array $fileds
     
     ) {}
 
     public function handle(EmailService $emailService): void
     {
         $invoices = Invoice::with('centre')
-            ->whereIn('id', $this->invoiceIds)
+            ->whereIn('id', $this->fileds['invoice_ids'])
             ->get();
 
         $grouped = $invoices->groupBy('responsible_id');
@@ -66,15 +66,16 @@ class SendInvoicesJob implements ShouldQueue
 
             $subject = ($invoicesGroup->first()->is_budget ? 'Presupuestos' : 'Solicitud de órdenes de compra') . " - {$centre->name}";
 
-            $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject, $this->email);
+            $messageId = EmailHelper::notify($responsiblePerson->email, $html, $attachments, $subject, $this->fileds['email'] ?? null, $this->fileds['cc'] ?? null);
 
-
-            if (!$messageId) {
+            if (!$messageId || is_null($messageId)) {
                 foreach ($invoicesGroup as $invoice) {
                     $invoice->sent_at = null;
+                    $invoice->status = 'envio';
                     $invoice->save();
                 }
             }
+
             
             if ($messageId) {
                 Email::create([

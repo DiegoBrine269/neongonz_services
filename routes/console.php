@@ -14,4 +14,4 @@ Artisan::command('inspire', function () {
 Schedule::command(LimpiarProyectos::class)->daily()->description('Cierra proyectos inactivos');
 
 // routes/console.php
-// Schedule::job(new FetchInboxJob)->everyMinute();
+Schedule::job(new FetchInboxJob)->everyMinute();

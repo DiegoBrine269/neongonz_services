@@ -41,7 +41,7 @@ class ProcessBillingJob implements ShouldQueue
 
         $billings = $service->saveBilling($this->fields, $this->invoices);    
         $this->invoices->load('billing');
-        $service->sendBillingEmail($this->invoices, $billings);
+        $service->sendBillingEmail($this->invoices, $billings, emailToReply: $this->fields['email'] ?? null);
     }
 
     public function failed(\Throwable $exception): void

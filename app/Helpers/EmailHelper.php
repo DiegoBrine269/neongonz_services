@@ -7,7 +7,7 @@
 
     class EmailHelper
     {
-        public static function notify($email, $html, $attachments, $subject = 'Solicitud de órdenes de compra', $emailToReply = null){
+        public static function notify($email, $html, $attachments, $subject = 'Solicitud de órdenes de compra', $emailToReply = null, $cc = null){
 
             if(!$email) {
                 return false;
@@ -41,7 +41,7 @@
                 $response = Resend::emails()->send([
                     'from'        => "$businessProfile->business_name <$from>",
                     'to'          => [$email],
-                    'cc'          => [$businessProfile->email],
+                    'cc'          => [$businessProfile->email, ...($cc ?? [])],
                     'subject'     => $subject,
                     'reply_to'    => $businessProfile->email,
                     'html'        => $html,

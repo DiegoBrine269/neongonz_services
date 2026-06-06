@@ -195,11 +195,16 @@ class InvoicesController extends Controller
             'invoice_ids' => 'required|array|min:1',
             'invoice_ids.*' => 'exists:invoices,id',
             'email' => 'nullable',
+            'cc' => 'nullable|array',
+            'cc.*' => 'email',
         ], [
             'invoice_ids.required' => 'Debes seleccionar al menos una cotización para enviar.',
             'invoice_ids.array' => 'El formato de los IDs de las cotizaciones no es válido.',
             'invoice_ids.min' => 'Debes seleccionar al menos una cotización para enviar.',
             'invoice_ids.*.exists' => 'Una o más cotizaciones seleccionadas no existen.',
+            'email.email' => 'El correo electrónico proporcionado no es válido.',
+            'cc.array' => 'El campo CC debe ser un array de correos electrónicos.',
+            'cc.*.email' => 'Uno o más correos electrónicos en CC no son válidos.',
         ]);
 
         $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->pluck('is_budget');
@@ -213,7 +218,7 @@ class InvoicesController extends Controller
        
 
 
-        SendInvoicesJob::dispatch($fields['invoice_ids'], $fields['email'] ?? null);
+        SendInvoicesJob::dispatch($fields);
 
         return response()->json(['message' => 'Los correos se están enviando en segundo plano.']);
     }

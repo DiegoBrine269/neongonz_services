@@ -46,6 +46,6 @@ class FetchInboxJob implements ShouldQueue
             'html'       => $m->getHtmlBody(),
         ])->sortByDesc('date')->values()->toArray();
 
-        Cache::put('inbox', $correos, 300);
+        Cache::forever('inbox', $correos);
     }
 }

@@ -27,6 +27,9 @@ class StoreBillingRequest extends FormRequest
             'joined' => 'boolean|nullable',
             'payment_form' => 'required|string|in:01,02,03,04,28,29,30,31,99',
             'payment_method' => 'required|string|in:PUE,PPD',
+            'email' => 'nullable',
+            'cc' => 'nullable|array',
+            'cc.*' => 'email',
         ];
     }
 
@@ -43,6 +46,8 @@ class StoreBillingRequest extends FormRequest
             'payment_form.in' => 'La forma de pago no es válida.',
             'payment_method.required' => 'El método de pago es obligatorio.',
             'payment_method.in' => 'El método de pago no es válido.',
+            'cc.array' => 'El formato de los correos electrónicos no es válido.',
+            'cc.*.email' => 'El correo electrónico no es válido.',
         ];
     }
 
