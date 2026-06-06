@@ -30,6 +30,7 @@ class FetchInboxJob implements ShouldQueue
      */
     public function handle()
     {
+        Log::info('FetchInboxJob ejecutándose: ' . now());
         $client = Client::account('default');
         $client->connect();
 
