@@ -41,7 +41,9 @@ class FetchInboxJob implements ShouldQueue
         $correos = $messages->map(fn($m) => [
             'uid'        => $m->getUid(),
             'message_id' => (string) $m->getHeader()->get('message-id'),
-            'subject'    => mb_decode_mimeheader((string) $m->getSubject()),
+            'subject' => mb_decode_mimeheader(
+                preg_replace('/\?=\s+=\?/', '?==?', (string) $m->getSubject())
+            ),
             'from'       => $m->getFrom()[0]->mail,
             'date'       => (string) $m->getDate(),
             'seen'       => $m->getFlags()->has('Seen'),
