@@ -146,7 +146,7 @@ class InvoicesController extends Controller
         $shouldPaginate = filter_var($request->query('paginate', true), FILTER_VALIDATE_BOOLEAN);
 
         $invoices = $shouldPaginate
-                    ? $invoices->paginate(50)
+                    ? $invoices->paginate(100)
                     : $invoices->get();
         
     
@@ -207,16 +207,23 @@ class InvoicesController extends Controller
             'cc.*.email' => 'Uno o más correos electrónicos en CC no son válidos.',
         ]);
 
-        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->pluck('is_budget');
+        $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->get();
 
-        if ($invoices->unique()->count() > 1) {
+        $uniqueTypes = $invoices->pluck('is_budget')->unique();
+
+        if ($uniqueTypes->count() > 1) {
             return response()->json([
                 'error' => 'No puedes enviar cotizaciones y presupuestos juntos. Selecciona solo un tipo.'
             ], 422);
         }
 
-       
+        $statuses = $invoices->pluck('status')->unique()->values();
 
+        if ($statuses->count() != 2 && !$statuses->contains('envio') && !$statuses->contains('oc')) {
+            return response()->json([
+                'error' => 'Las cotizaciones seleccionadas deben tener el estado "envio" o "oc" para ser enviadas.'
+            ], 422);
+        }
 
         SendInvoicesJob::dispatch($fields);
 
