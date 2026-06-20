@@ -94,6 +94,7 @@ class ServicesController extends Controller
             'centre_id' => 'nullable|exists:centres,id',
             'sat_unit_key' => 'required|string',
             'sat_key_prod_serv' => 'required|string|digits:8',
+            'multiple_quantity' => 'boolean',
         ],[
             'name.required' => 'El nombre del servicio es obligatorio',
             'name.unique' => 'El nombre del servicio ya existe',
@@ -105,6 +106,7 @@ class ServicesController extends Controller
             'sat_key_prod_serv.required' => 'La clave de producto o servicio SAT es obligatoria',
             'sat_key_prod_serv.string' => 'La clave de producto o servicio SAT debe ser una cadena de texto',
             'sat_key_prod_serv.digits' => 'La clave de producto o servicio SAT debe tener 8 dígitos',
+            'multiple_quantity.boolean' => 'El campo multiple_quantity debe ser verdadero o falso',
         ]);
 
         $centre_id = $fields['centre_id'] ?? null;
