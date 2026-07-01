@@ -12,6 +12,7 @@ use App\Http\Controllers\ProjectVehiclesPhotosController;
 use App\Http\Controllers\ResponsiblesController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VehiclesController;
 use App\Http\Controllers\WebhookController;
 use App\Models\Vehicle;
@@ -79,6 +80,8 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
     Route::apiResource('vehicles', VehiclesController::class)->whereAlphaNumeric('vehicle');
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
+    Route::apiResource('users', UsersController::class);
+
 
     Route::prefix('admin')->group(function () {
         Route::get('/users', [AdminController::class, 'getUsers']);
