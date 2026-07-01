@@ -80,6 +80,8 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
     Route::apiResource('vehicles', VehiclesController::class)->whereAlphaNumeric('vehicle');
     Route::apiResource('services', ServicesController::class);
     Route::apiResource('projects', ProjectsController::class);
+
+    Route::get('/users/{id}/project-vehicles', [UsersController::class, 'projectVehicles']);
     Route::apiResource('users', UsersController::class);
 
 
