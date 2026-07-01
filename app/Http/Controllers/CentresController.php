@@ -84,7 +84,11 @@ class CentresController extends Controller
      */
     public function show(string $id)
     {
-        $centre = Centre::with('responsibles')->find($id);
+        $centre = Centre::with([
+            'responsibles',
+            'projects' => fn($q) => $q->orderBy('date', 'desc'),
+            'projects.service'
+        ])->find($id);
 
         if (!$centre) {
             return response()->json(['message' => 'Centro de ventas no encontrado.'], 404);

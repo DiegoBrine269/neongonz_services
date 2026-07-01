@@ -36,4 +36,9 @@ class Centre extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+
+    public function projects()
+    {
+        return $this->hasMany(Project::class);
+    }
 }
