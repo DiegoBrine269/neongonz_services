@@ -35,6 +35,7 @@ class UsersController extends Controller
             'project.centre:name,id',
         ])
         ->where('user_id', $id)
+        ->orderBy('created_at', 'desc')
         ->paginate(50);
     }
 }
