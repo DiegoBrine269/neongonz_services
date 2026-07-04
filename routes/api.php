@@ -11,6 +11,7 @@ use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectVehiclesPhotosController;
 use App\Http\Controllers\ResponsiblesController;
 use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VehiclesController;
@@ -89,6 +90,12 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         Route::get('/users', [AdminController::class, 'getUsers']);
         Route::post('/users/{user}/change-password', [AdminController::class, 'changeUserPassword']);
         Route::post('/users/{user}/change-status', [AdminController::class, 'changeUserStatus']);
+    });
+
+    Route::prefix('statistics')->group(function () {
+        Route::get('/summary', [StatisticsController::class, 'summary']); // KPIs generales
+        Route::get('/payment-pending', [StatisticsController::class, 'paymentPending']); // centres con saldo pendiente
+        Route::get('/incomes', [StatisticsController::class, 'incomes']); // ingresos por fecha   
     });
 });
 
