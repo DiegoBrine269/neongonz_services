@@ -330,6 +330,10 @@ class ProjectsController extends Controller
             foreach($request->extra_projects as $id_extra_project){
                 $extra_project = Project::find($id_extra_project); 
 
+                if(!$extra_project){
+                    continue; // Si el proyecto extra no existe, saltar
+                }
+
                 if($extra_project->vehicles()->where('vehicle_id', $vehicle->id)->exists()){
                     continue; // Si el vehículo ya está asociado a este proyecto, saltar
                 }
