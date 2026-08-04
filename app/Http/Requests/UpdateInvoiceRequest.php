@@ -30,8 +30,8 @@ class UpdateInvoiceRequest extends FormRequest
             'concept' => 'sometimes|string',
             'comments' => 'max:255',
             'oc'              => 'required_with:f_receipt,validation_date|nullable|string|max:255',
-            'f_receipt'       => 'required_with:oc,validation_date|nullable|string|max:255',
-            'validation_date' => 'required_with:f_receipt,oc|nullable|date|before_or_equal:today',
+            'f_receipt'       => 'required_with:validation_date|nullable|string|max:255',
+            'validation_date' => 'required_with:f_receipt|nullable|date|before_or_equal:today',
             'status' => 'required|string|in:envio,oc,factura,f,complemento,finalizada',
         ];
     }
@@ -53,8 +53,8 @@ class UpdateInvoiceRequest extends FormRequest
             'validation_date.date' => 'La fecha de validación no es válida.',
             'validation_date.before_or_equal' => 'La fecha de validación no puede ser futura.',
             'oc.required_with' => 'El número de OC es obligatorio cuando se proporciona el número de F o la fecha de validación.',
-            'f_receipt.required_with' => 'El número de F es obligatorio cuando se proporciona el número de OC o la fecha de validación.',
-            'validation_date.required_with' => 'La fecha de validación es obligatoria cuando se proporciona el número de OC o el número de F.',
+            'f_receipt.required_with' => 'El número de F es obligatorio cuando se proporciona la fecha de validación.',
+            'validation_date.required_with' => 'La fecha de validación es obligatoria cuando se proporciona el número de F.',
             'status.required' => 'El estado es obligatorio.',
             'status.string' => 'El estado debe ser una cadena de texto.',
             'status.in' => 'El estado seleccionado no es válido.',
