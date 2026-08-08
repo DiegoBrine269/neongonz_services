@@ -22,8 +22,8 @@ class UpdateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // 'vehicles' => 'required_unless:completed,false|array|min:1',
-            'vehicles' => 'array|min:1',
+            'vehicles' => 'required_unless:is_custom,true|array|min:1',
+            // 'vehicles' => '',
             'date' => 'required|date|before_or_equal:today',
             'responsible_id' => 'required|exists:responsibles,id',
             'quantity' => 'sometimes|numeric|min:1',
@@ -40,7 +40,7 @@ class UpdateInvoiceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            // 'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
+            'vehicles.required' => 'Debes seleccionar al menos un vehículo para la cotización.',
             'vehicles.array' => 'El formato de los vehículos no es válido.',
             'vehicles.min' => 'Debes seleccionar al menos un vehículo para la cotización.',
             'date.required' => 'La fecha es obligatoria.',
