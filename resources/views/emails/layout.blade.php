@@ -43,6 +43,10 @@
             margin-top: 5px;
             color: #333;
         }
+
+
+        .tabla-simple { border-collapse: collapse; width: 100%; }
+        .tabla-simple td { border: 1px solid #ddd; padding: 6px; }
     </style>
 </head>
 <body>

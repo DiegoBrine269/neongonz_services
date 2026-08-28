@@ -51,19 +51,7 @@
             padding-left: 0;
         }
 
-        td {
-            /* text-align: center; */
-            /* vertical-align: middle; */
-        }
-
-
-
-        /* .logo-container {
-            width: 25%;
-        } */
-
         .header-text {
-
             text-align: center;
             font-size: 15px;
             padding-top: 0; 
@@ -111,7 +99,7 @@
             font-weight: bold;
         }
 
-                .border {
+        .border {
             border: 1px solid black;
         }
 
@@ -241,7 +229,9 @@
                                     {{ implode(', ', $grouped_vehicles_by_type->pluck('eco')->toArray()) }}
                                 </td>
                                 <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($price,2) }}</td>
-                                <td class="text-right" style="min-width: 70px"><span class="text-left">$</span> {{ number_format($totalForGroup, 2) }}</td>
+                                <td class="text-right" style="white-space: nowrap;">
+                                    $ {{ number_format($totalForGroup, 2) }}
+                                </td>
                             </tr>
                         @endforeach
                     @endforeach
@@ -264,7 +254,9 @@
                     <td class="no-border no-bg"></td>
                     <td class="no-border no-bg"></td>
                     <td class="encabezado-azul">SUBTOTAL</td>                    
-                    <td class="text-right encabezado-azul"><span class="text-left">$</span> {{ number_format($grandTotal, 2)}} </td>
+                    <td class="text-right" style="white-space: nowrap;">
+                        $ {{ number_format($grandTotal, 2) }}
+                    </td>
                 </tr>
         </table>
     </main>

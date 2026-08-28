@@ -3,16 +3,16 @@
 
 @extends('emails.layout')
 
+
 @section('content')
-    <p>Estimado/a {{ $to }},</p>
-    
+    <p>Estimado/a {{ $to }}:</p>
     
 
     <p>
         Le compartimos la(s) factura(s) correspondiente(s) a la(s) orden(es) de compra:
     </p>
 
-    <table>
+    <table class="tabla-simple">
         @foreach ($list as $item)
             <tr>
                 <td>{{ $item['invoice_number'] }}</td>
@@ -20,7 +20,7 @@
                 <td>{{ $item['billing'] }}</td>
             </tr>
         @endforeach
-        </table>
+    </table>
 
     <p>
         Quedamos a la espera del numero de recibo para la validación de la factura en el portal.
