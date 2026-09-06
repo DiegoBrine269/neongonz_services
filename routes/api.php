@@ -7,6 +7,7 @@ use App\Http\Controllers\CentresController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectVehiclesPhotosController;
 use App\Http\Controllers\ResponsiblesController;
@@ -80,6 +81,7 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
     Route::apiResource('centres', CentresController::class);
     Route::apiResource('vehicles', VehiclesController::class)->whereAlphaNumeric('vehicle');
     Route::apiResource('services', ServicesController::class);
+    Route::apiResource('products', ProductsController::class);
     Route::apiResource('projects', ProjectsController::class);
 
     Route::get('/users/{id}/project-vehicles', [UsersController::class, 'projectVehicles']);

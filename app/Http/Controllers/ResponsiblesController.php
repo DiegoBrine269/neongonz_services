@@ -36,8 +36,8 @@ class ResponsiblesController extends Controller
         ]);
 
         $responsible = Responsible::create([
-            'name' => $fields['name'],
-            'email' => $fields['email'],
+            'name' => trim($fields['name']),
+            'email' => trim($fields['email']),
         ]);
 
         return response()->json([

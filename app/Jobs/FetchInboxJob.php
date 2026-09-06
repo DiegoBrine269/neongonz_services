@@ -38,6 +38,12 @@ class FetchInboxJob implements ShouldQueue
         $inbox    = $client->getFolder('INBOX');
         $messages = $inbox->messages()->all()->setFetchOrder('desc')->limit(50)->get();
 
+        // $messages = $inbox->messages()
+        //     ->all()
+        //     ->setFetchOrder('desc')
+        //     ->limit(50)
+        //     ->get();
+
         $correos = $messages->map(fn($m) => [
             'uid'        => $m->getUid(),
             'message_id' => (string) $m->getHeader()->get('message-id'),
