@@ -60,17 +60,19 @@ class Invoice extends Model
     }
 
     
-    public function billing() // mejor: factura()
+    public function billing()
     {
         return $this->hasOneThrough(
-            Billing::class,
-            InvoiceBilling::class,
-            'invoice_id', // FK en invoice_billings que apunta a invoices.id
-            'id',         // PK en billings
-            'id',         // PK local en invoices
-            'billing_id'  // FK en invoice_billings que apunta a billings.id
-        )->where('billings.type', 'factura');
-    }
+                Billing::class,
+                        InvoiceBilling::class,
+                                'invoice_id',
+                                        'id',
+                                                'id',
+                                                        'billing_id'
+                                                            )
+                                                                ->where('billings.type', 'factura')
+                                                                    ->latest('billings.id');
+                                                                    }
 
     public function billings()
     {
