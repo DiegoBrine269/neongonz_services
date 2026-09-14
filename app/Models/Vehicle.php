@@ -46,7 +46,7 @@ class Vehicle extends Model
 
     public function projectVehicle()
     {
-        return $this->hasOne(ProjectVehicle::class)->latestOfMany(); // si solo quieres el más reciente
+        return $this->hasOne(ProjectVehicle::class);
     }
 
     public function projectVehicles()

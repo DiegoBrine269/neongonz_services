@@ -6,6 +6,7 @@ use App\Http\Requests\StoreVehicleProjectRequest;
 use App\Models\Project;
 use App\Models\ProjectType;
 use App\Models\ProjectVehicle;
+use App\Models\ProjectVehiclesPhoto;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -13,9 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Format;
+use Intervention\Image\ImageManager;
 
 class ProjectsController extends Controller
 {
@@ -196,6 +197,13 @@ class ProjectsController extends Controller
         //obtener todos los usuarios relacionados en una sola consulta
         $users = User::whereIn('id', $userIds)->get()->keyBy('id');
 
+
+        // eager load de fotos por project_vehicle_id, una sola query
+        $projectVehicleIds = $vehicles->pluck('pivot.id');
+        $photosByProjectVehicle = ProjectVehiclesPhoto::whereIn('project_vehicle_id', $projectVehicleIds)
+            ->get()
+            ->groupBy('project_vehicle_id');
+
         $formatted = [
             'id' => $project->id,
             // 'type' => $project->type,
@@ -214,7 +222,7 @@ class ProjectsController extends Controller
                 'name' => $project->service->name,
                 'multiple_quantity' => $project->service->multiple_quantity,
             ] : null,
-            'vehicles' => $vehicles->map(function ($vehicle) use ($users) {
+            'vehicles' => $vehicles->map(function ($vehicle) use ($users, $photosByProjectVehicle) {
                 $pivot = $vehicle->pivot;
 
                 // Consultando en colección en memoria
@@ -230,14 +238,11 @@ class ProjectsController extends Controller
                     ] : null,
                     'created_at' => $pivot->created_at,
                     'commentary' => $pivot->commentary,
-                    'quantity' => $vehicle->projectVehicle->quantity,
-                    'photos' => $vehicle->projectVehicle->photos->map(function ($photo) {
-                        return [
-                            'id' => $photo->id,
-                        ];
-                    }),
-                ];
-            })->toArray()
+                    'quantity' => $pivot->quantity,
+                    'photos' => ($photosByProjectVehicle->get($pivot->id) ?? collect())
+                        ->map(fn ($photo) => ['id' => $photo->id]),
+                                    ];
+                                })->toArray()
         ];
 
 
