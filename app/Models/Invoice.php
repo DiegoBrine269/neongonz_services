@@ -33,6 +33,10 @@ class Invoice extends Model
         'validation_date',
     ];
 
+    protected $casts = [
+        'is_budget' => 'boolean',
+    ];
+
 
     public function invoiceVehicles() {
         return $this->hasMany(InvoiceVehicle::class);
@@ -89,6 +93,11 @@ class Invoice extends Model
             'id',
             'billing_id'
         )->where('billings.type', 'complemento');
+    }
+
+    public function responsible()
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 
 }

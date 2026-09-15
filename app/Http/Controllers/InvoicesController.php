@@ -34,7 +34,7 @@ class InvoicesController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['centre', 'billing', 'complements']);
+        $query = Invoice::with(['centre', 'billing', 'complements', 'responsible']);
     
         if ($request->has('filter')) {
 
@@ -209,20 +209,23 @@ class InvoicesController extends Controller
 
         $invoices = Invoice::whereIn('id', $fields['invoice_ids'])->get();
 
-        $uniqueTypes = $invoices->pluck('is_budget')->unique();
+        $uniqueTypes = $invoices->pluck('is_budget')
+            ->map(fn ($v) => (bool) filter_var($v, FILTER_VALIDATE_BOOLEAN))
+            ->unique();
 
         if ($uniqueTypes->count() > 1) {
-            return response()->json([
-                'error' => 'No puedes enviar cotizaciones y presupuestos juntos. Selecciona solo un tipo.'
-            ], 422);
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'invoice_ids' => 'No puedes enviar cotizaciones y presupuestos juntos. Selecciona solo un tipo.',
+            ]);
         }
 
         $statuses = $invoices->pluck('status')->unique()->values();
+        $invalidStatuses = $statuses->diff(['envio', 'oc']);
 
-        if ($statuses->count() != 2 && !$statuses->contains('envio') && !$statuses->contains('oc')) {
-            return response()->json([
-                'error' => 'Las cotizaciones seleccionadas deben tener el estado "envio" o "oc" para ser enviadas.'
-            ], 422);
+        if ($invalidStatuses->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'invoice_ids' => 'Una o más cotizaciones seleccionadas no están en un estado válido para enviar. Estados inválidos: ' . $invalidStatuses->implode(', '),
+            ]);
         }
 
         SendInvoicesJob::dispatch($fields);
