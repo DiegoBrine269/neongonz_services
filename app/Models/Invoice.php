@@ -97,7 +97,7 @@ class Invoice extends Model
 
     public function responsible()
     {
-        return $this->belongsTo(User::class, 'responsible_id');
+        return $this->belongsTo(Responsible::class, 'responsible_id');
     }
 
 }
