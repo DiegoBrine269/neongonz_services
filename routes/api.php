@@ -129,6 +129,7 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
     Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
+    Route::get('/photos/proxy', [ProjectVehiclesPhotosController::class, 'proxy']);
 
     Route::get('/inbox', [EmailController::class, 'inbox']);
 
