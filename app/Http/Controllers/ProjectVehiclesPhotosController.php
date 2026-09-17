@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProjectVehiclesPhoto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProjectVehiclesPhotosController extends Controller
@@ -35,7 +36,15 @@ class ProjectVehiclesPhotosController extends Controller
 
         $response = Http::get($request->query('url'));
 
+        if (!$response->successful()) {
+            Log::error('Proxy fetch failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return response('Error al obtener la imagen', $response->status());
+        }
+
         return response($response->body(), 200)
-            ->header('Content-Type', $response->header('Content-Type, image/jpeg'));
+            ->header('Content-Type', $response->header('Content-Type') ?? 'image/jpeg');
     }
 }

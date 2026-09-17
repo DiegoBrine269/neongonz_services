@@ -129,15 +129,16 @@ Route::middleware(['auth:sanctum', 'is_active'])->group(function () {
 
     Route::get('/project-vehicles-photos', [ProjectVehiclesPhotosController::class, 'index']);
     Route::get('/project-vehicles-photos/{id}', [ProjectVehiclesPhotosController::class, 'show']);
-    Route::get('/photos/proxy', [ProjectVehiclesPhotosController::class, 'proxy']);
-
-    Route::get('/inbox', [EmailController::class, 'inbox']);
-
     
-});
-
-Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-
-Route::post('/webhooks/resend', [WebhookController::class, 'resend']);
-
+    Route::get('/inbox', [EmailController::class, 'inbox']);
+    
+    
+    });
+    
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLink']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    
+    Route::post('/webhooks/resend', [WebhookController::class, 'resend']);
+    Route::get('/photos/proxy', [ProjectVehiclesPhotosController::class, 'proxy']);
+    
+    
