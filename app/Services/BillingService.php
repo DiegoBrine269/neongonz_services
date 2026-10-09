@@ -95,7 +95,7 @@ class BillingService
         return $billings;
     }
 
-    private function createBilling($customer, array $fields, $invoice, array $items): Billing
+    public function createBilling($customer, array $fields, $invoice, array $items): Billing
     {
         $facturapi = $this->getFacturapi();
 
@@ -108,7 +108,11 @@ class BillingService
         ]);
 
         $folio    = $sat_invoice->folio_number;
-        $fileName = "FACT" . trim($folio) . " " . trim($invoice->oc);
+
+        if($invoice)
+            $fileName = "FACT" . trim($folio) . " " . trim($invoice->oc);
+        else
+            $fileName = "FACT" . trim($folio);
 
         Storage::put("{$this->billings_path}/xml/{$fileName}.xml", $facturapi->Invoices->download_xml($sat_invoice->id));
         Storage::put("{$this->billings_path}/pdf/{$fileName}.pdf", $facturapi->Invoices->download_pdf($sat_invoice->id));

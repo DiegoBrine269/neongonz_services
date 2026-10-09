@@ -22,4 +22,9 @@ class Billing extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 }

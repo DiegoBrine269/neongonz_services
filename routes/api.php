@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum', 'is_admin', 'is_active'])->group(function () 
         // Route::get('/billings/{id}/download', [BillingsController::class, 'download'])->whereNumber('id');
     });
     Route::apiResource('billings', BillingsController::class);
+    Route::post('/billings/custom', [BillingsController::class, 'storeCustom']);
+
 
     Route::apiResource('customers', CustomersController::class);
     Route::apiResource('centres', CentresController::class);

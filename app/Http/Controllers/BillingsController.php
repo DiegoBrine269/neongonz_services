@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\EmailHelper;
 use App\Http\Requests\StoreBillingRequest;
 use App\Http\Requests\StoreComplementRequest;
+use App\Http\Requests\StoreCustomBillingRequest;
 use App\Jobs\ProcessBillingJob;
 use App\Jobs\ProcessComplementJob;
 use App\Models\Billing;
@@ -24,6 +25,11 @@ use ZipArchive;
 
 class BillingsController extends Controller
 {
+    private function getFacturapi(): Facturapi
+    {
+        return new Facturapi(config('app.facturapi_key'));
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -35,7 +41,7 @@ class BillingsController extends Controller
             $query->where('oc', $request->oc);
         }
 
-        $billings = $query->with('invoice')->get();
+        $billings = $query->with(['invoice', 'customer'])->paginate(50);
 
         return response()->json($billings);
     }
@@ -75,6 +81,34 @@ class BillingsController extends Controller
         ProcessBillingJob::dispatch($fields, $invoices);
 
         return response()->json(['message' => 'La facturación está siendo procesada.'], 202);
+    }
+
+    public function storeCustom(StoreCustomBillingRequest $request)
+    {
+        $fields = $request->validated();
+
+        if ($request->boolean('dry_run')) {
+            return response()->json(['message' => 'Validación correcta']);
+        }
+
+        $service = app(BillingService::class);
+
+        $customer = Customer::find($fields['customer_id']);
+        
+        $items = collect($fields['rows'])->map(fn ($row) => [
+            'quantity' => (int) $row['quantity'],
+            'product' => [
+                'description'  => $row['concept'],
+                'price'        => (float) $row['price'],
+                'product_key'  => (string) $row['sat_key_prod_serv'],
+                'unit_key'     => $row['sat_unit_key'],
+                'tax_included' => false,
+            ],
+        ])->all();
+
+        $billing = $service->createBilling(customer:$customer, invoice: null, fields: $fields, items: $items);
+
+        return $this->downloadZip($request, $billing);
     }
 
     public function resend(Request $request)
@@ -134,8 +168,21 @@ class BillingsController extends Controller
 
     public function show(Request $request, string $id)
     {
+        $billing = Billing::with(['invoice', 'customer'])->find($id);
+
+        if ($request->boolean('download')) {
+            return $this->downloadZip($billing);
+        }
+
+        if (!$billing) {
+            return response()->json(['error' => 'Facturación no encontrada.'], 404);
+        }
+
+        return response()->json($request, $billing);
+    }
+
+    private function downloadZip($request, $billing){
         try {
-            $billing = Billing::find($id);
 
             if (!$billing)
                 return response()->json(['error' => 'Facturación no encontrada.'], 404);
@@ -187,17 +234,13 @@ class BillingsController extends Controller
                 'Access-Control-Allow-Credentials' => 'true',
                 'Access-Control-Expose-Headers'    => 'Content-Disposition, Content-Length',
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error en show billing: ' . $e->getMessage(), [
-                'id'    => $id,
+            Log::error('Error al descargar billing: ' . $e->getMessage(), [
+                'id'    => $billing->id,
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'error'   => 'Error interno del servidor.',
-                // 'message' => $e->getMessage(), // quita esto en producción real
-            ], 500);
+            return response()->json(['error' => 'Error interno del servidor.'], 500);
         }
     }
 
