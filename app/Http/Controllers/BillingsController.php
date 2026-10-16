@@ -171,14 +171,14 @@ class BillingsController extends Controller
         $billing = Billing::with(['invoice', 'customer'])->find($id);
 
         if ($request->boolean('download')) {
-            return $this->downloadZip($billing);
+            return $this->downloadZip($request, $billing);
         }
 
         if (!$billing) {
             return response()->json(['error' => 'Facturación no encontrada.'], 404);
         }
 
-        return response()->json($request, $billing);
+       return response()->json($billing);
     }
 
     private function downloadZip($request, $billing){
@@ -201,10 +201,10 @@ class BillingsController extends Controller
                 return response()->json(['error' => 'Extensión ZIP no disponible.'], 500);
 
             $type = $billing->type == 'factura' ? 'FACT' : 'COMP';
-            $zipFileName = "SAT {$type}{$billing->folio_number}.zip";
+            $zipFileName = "SAT_{$type}{$billing->folio_number}.zip";
 
-            $tempDir = storage_path('temp');
-            $tempPath = "{$tempDir}/{$zipFileName}";
+            $tempDir  = storage_path('temp');
+            $tempPath = "{$tempDir}/" . uniqid('billing_', true) . '.zip';
 
             if (!file_exists($tempDir)) {
                 if (!mkdir($tempDir, 0775, true))
@@ -216,24 +216,17 @@ class BillingsController extends Controller
 
             $zip = new ZipArchive();
 
-            if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE)
+            if ($zip->open($tempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
                 return response()->json(['error' => 'No se pudo abrir el archivo ZIP.'], 500);
+            }
 
             $zip->addFromString(basename($billing->pdf_path), Storage::get($pdf_path));
             $zip->addFromString(basename($billing->xml_path), Storage::get($xml_path));
             $zip->close();
 
-            $zipContent = file_get_contents($tempPath);
-            unlink($tempPath);
-
-            return response($zipContent, 200, [
-                'Content-Type'                     => 'application/zip',
-                'Content-Length'                   => strlen($zipContent),
-                'Content-Disposition'              => 'attachment; filename="' . $zipFileName . '"',
-                'Access-Control-Allow-Origin'      => $request->header('Origin'),
-                'Access-Control-Allow-Credentials' => 'true',
-                'Access-Control-Expose-Headers'    => 'Content-Disposition, Content-Length',
-            ]);
+            return response()->download($tempPath, $zipFileName, [
+                'Content-Type' => 'application/zip',
+            ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             Log::error('Error al descargar billing: ' . $e->getMessage(), [
                 'id'    => $billing->id,
