@@ -1,4 +1,4 @@
-FROM php:8.4.5-fpm-alpine3.20
+FROM php:8.4.27-fpm-alpine3.24
 
 # Dependencias
 RUN apk add --no-cache \
