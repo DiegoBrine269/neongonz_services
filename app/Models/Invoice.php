@@ -76,7 +76,7 @@ class Invoice extends Model
                                                             )
                                                                 ->where('billings.type', 'factura')
                                                                     ->latest('billings.id');
-                                                                    }
+    }
 
     public function billings()
     {

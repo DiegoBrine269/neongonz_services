@@ -32,30 +32,33 @@ class FetchInboxJob implements ShouldQueue
     public function handle()
     {
         Log::info('FetchInboxJob ejecutándose: ' . now());
+
         $client = Client::account('default');
         $client->connect();
 
-        $inbox    = $client->getFolder('INBOX');
-        $messages = $inbox->messages()->all()->setFetchOrder('desc')->limit(50)->get();
+        $inbox = $client->getFolder('INBOX');
 
-        // $messages = $inbox->messages()
-        //     ->all()
-        //     ->setFetchOrder('desc')
-        //     ->limit(50)
-        //     ->get();
+        $messages = $inbox->query()
+            ->all()
+            ->setFetchOrder('desc')
+            ->setFetchBody(false)       // no descargar el body en la consulta masiva
+            ->leaveUnread()             // no marcar como leídos al leer
+            ->limit(50, 1)              // 50 por página, página 1
+            ->get();
 
-        $correos = $messages->map(fn($m) => [
+        $correos = $messages->map(fn ($m) => [
             'uid'        => $m->getUid(),
             'message_id' => (string) $m->getHeader()->get('message-id'),
-            'subject' => mb_decode_mimeheader(
+            'subject'    => mb_decode_mimeheader(
                 preg_replace('/\?=\s+=\?/', '?==?', (string) $m->getSubject())
             ),
-            'from'       => $m->getFrom()[0]->mail,
+            'from'       => $m->getFrom()[0]->mail ?? null,
             'date'       => (string) $m->getDate(),
             'seen'       => $m->getFlags()->has('Seen'),
-            'html'       => $m->getHtmlBody(),
         ])->sortByDesc('date')->values()->toArray();
 
         Cache::forever('inbox', $correos);
+
+        $client->disconnect();
     }
 }
